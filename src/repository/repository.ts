@@ -1,5 +1,10 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { ArticleDto, TaxonomyRef } from "../pipeline/types";
+import type {
+  ArticleDto,
+  ArticleListResponse,
+  LabelWithCount,
+  TaxonomyRef,
+} from "../pipeline/types";
 import { toArticleDto, type ArticleRow } from "../pipeline/dto";
 import { slugify } from "../pipeline/labels";
 
@@ -25,17 +30,6 @@ export interface ListQuery {
   q?: string;
   page: number;
   perPage: number;
-}
-
-export interface ListResult {
-  items: ArticleDto[];
-  page: number;
-  perPage: number;
-  total: number;
-}
-
-export interface LabelWithCount extends TaxonomyRef {
-  count: number;
 }
 
 interface ArticleRecord extends ArticleRow {
@@ -169,7 +163,7 @@ export class Repository {
     );
   }
 
-  async listArticles(query: ListQuery): Promise<ListResult> {
+  async listArticles(query: ListQuery): Promise<ArticleListResponse> {
     const where: string[] = [];
     const params: Param[] = [];
 

@@ -1,7 +1,25 @@
 @import "tailwindcss";
 
+/* AIセキュリティ研究ノート: 紙のような落ち着いた配色 + シグナルアクセント（ライトのみ） */
 @theme {
-  /* プロジェクト固有のテーマは frontend-design スキルで確立し、ここに反映する */
+  --color-paper: #f6f4ee;
+  --color-surface: #ffffff;
+  --color-ink: #1c1a15;
+  --color-muted: #6c6a60;
+  --color-faint: #9b988c;
+  --color-line: #e4e0d6;
+  --color-accent: #4338ca;
+  --color-accent-soft: #ecebfb;
+  --color-warn: #b14328;
+  --color-warn-soft: #fae7df;
+
+  --font-sans:
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+    system-ui, sans-serif;
+  --font-mono:
+    "SFMono-Regular", "Menlo", "Consolas", monospace;
+
+  --radius-card: 0.75rem;
 }
 
 html,
@@ -12,4 +30,8 @@ body,
 
 body {
   margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }

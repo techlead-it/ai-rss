@@ -48,3 +48,16 @@ export interface TaxonomyRef {
   name: string;
   slug: string;
 }
+
+/** 記事件数付きのラベル */
+export interface LabelWithCount extends TaxonomyRef {
+  count: number;
+}
+
+/** 記事一覧 API のレスポンス */
+export interface ArticleListResponse {
+  items: ArticleDto[];
+  page: number;
+  perPage: number;
+  total: number;
+}
