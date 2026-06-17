@@ -9,11 +9,13 @@
     "cf:preview": "vp build && wrangler dev"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.9.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router": "^7.15.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260616.1",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

@@ -27,13 +27,13 @@
 
 ### フェーズ1: 基盤構築（D1 / Workers AI / Cron）
 
-- [ ] `wrangler.jsonc` に D1 バインディング・Workers AI バインディング・Cron Trigger（3日に1回）・`workflow_dispatch` 相当の手動実行を設定
-- [ ] D1 マイグレーション基盤を用意（schema: `categories` / `labels` / `articles` / `article_labels` / `articles_fts`、index 定義）
-- [ ] 初期シード: カテゴリ `セキュリティ` と初期ラベル（`プロンプトインジェクション` `ジェイルブレイク` `データポイズニング` `敵対的攻撃` `モデル窃取` `サプライチェーン` `脆弱性開示` `ガバナンス/規制`）
-- [ ] Worker テスト基盤（`@cloudflare/vitest-pool-workers` 等で D1 ローカルを使う統合テスト環境）の確認
-- [ ] ディレクトリ構成の確立（`pipeline/` `worker/` `web/`、テストはコロケーション）
-- [ ] [REVIEW] フェーズ実装の簡易セルフレビューと修正
-- [ ] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
+- [x] `wrangler.jsonc` に D1 バインディング・Workers AI バインディング・Cron Trigger（3日に1回）・`workflow_dispatch` 相当の手動実行を設定
+- [x] D1 マイグレーション基盤を用意（schema: `categories` / `labels` / `articles` / `article_labels` / `articles_fts`、index 定義）
+- [x] 初期シード: カテゴリ `セキュリティ` と初期ラベル（`プロンプトインジェクション` `ジェイルブレイク` `データポイズニング` `敵対的攻撃` `モデル窃取` `サプライチェーン` `脆弱性開示` `ガバナンス/規制`）
+- [x] Worker テスト基盤（`node:sqlite` を D1 互換アダプタでラップし FTS5 含め実SQLでテスト）の確認
+- [x] ディレクトリ構成の確立（`worker/` `repository/` ほか、テストはコロケーション）
+- [x] [REVIEW] フェーズ実装の簡易セルフレビューと修正
+- [x] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
 
 ### フェーズ2: ドメインロジック（I/O非依存の純粋関数）
 

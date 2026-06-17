@@ -1,8 +1,31 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ai-rss",
+  "main": "src/worker/index.ts",
   "compatibility_date": "2026-06-18",
   "assets": {
-    "directory": "./dist/"
+    "directory": "./dist/",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ai-rss",
+      // `wrangler d1 create ai-rss` で発行された ID に差し替える。
+      // ローカル `wrangler dev` はこの値に関わらずローカル SQLite を使う。
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "triggers": {
+    // 3日に1回（毎月3日刻みの 00:00 UTC）収集パイプラインを実行
+    "crons": ["0 0 */3 * *"]
+  },
+  "observability": {
+    "enabled": true
   }
 }
