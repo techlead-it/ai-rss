@@ -65,13 +65,13 @@
 
 ### フェーズ4: 本文取得・抽出とフォールバック
 
-- [ ] [RED] HTMLから本文テキスト抽出のテスト作成（正常HTMLフィクスチャ）
-- [ ] [GREEN] 本文抽出（CPUを浪費しない軽量方式）の実装
-- [ ] [RED] 取得失敗（403/到達不可/本文薄い）時にRSS抜粋で代替し `fetch_failed=1` を立てるテスト作成
-- [ ] [GREEN] フォールバック処理の実装
-- [ ] [REFACTOR] 抽出ロジックの整理
-- [ ] [REVIEW] フェーズ実装の簡易セルフレビューと修正
-- [ ] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
+- [x] [RED] HTMLから本文テキスト抽出のテスト作成（正常HTMLフィクスチャ）
+- [x] [GREEN] 本文抽出（CPUを浪費しない軽量方式）の実装
+- [x] [RED] 取得失敗（403/到達不可/本文薄い）時にRSS抜粋で代替し `fetch_failed=1` を立てるテスト作成
+- [x] [GREEN] フォールバック処理の実装
+- [x] [REFACTOR] 抽出ロジックの整理
+- [x] [REVIEW] フェーズ実装の簡易セルフレビューと修正
+- [x] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
 
 ### フェーズ5: AIエンジン（要約・分類）
 
