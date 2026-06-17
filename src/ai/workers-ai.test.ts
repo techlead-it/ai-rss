@@ -31,6 +31,36 @@ describe("parseAnalysis", () => {
     expect(result.labels).toEqual([]);
   });
 
+  it("parses a guided-JSON response where response is already an object", () => {
+    const raw = {
+      response: {
+        relevant: true,
+        summary: "要約G",
+        detail: ["要点1", "要点2"],
+        labels: ["プロンプトインジェクション"],
+        originalLang: "en",
+      },
+    };
+    const result = parseAnalysis(raw);
+    expect(result.summary).toBe("要約G");
+    expect(result.detail).toBe("- 要点1\n- 要点2");
+    expect(result.labels).toEqual(["プロンプトインジェクション"]);
+  });
+
+  it("parses an OpenAI-style choices response", () => {
+    const raw = {
+      choices: [
+        {
+          message: {
+            content:
+              '{"relevant":true,"summary":"要約C","detail":"- 要点","labels":[],"originalLang":"en"}',
+          },
+        },
+      ],
+    };
+    expect(parseAnalysis(raw).summary).toBe("要約C");
+  });
+
   it("throws when no JSON object is present", () => {
     expect(() => parseAnalysis({ response: "no json here" })).toThrow();
   });

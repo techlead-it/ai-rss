@@ -80,6 +80,22 @@ describe("Repository article persistence and dedup", () => {
     expect(existing.has("https://example.com/new")).toBe(false);
   });
 
+  it("checks a large set of dedup keys without exceeding SQL variable limits", async () => {
+    await repo.saveArticle({
+      ...base,
+      url: "https://example.com/known",
+      guid: "guid-known",
+      title: "t",
+      categoryId,
+    });
+    const keys = Array.from({ length: 250 }, (_, i) => `https://example.com/x${i}`);
+    keys.push("https://example.com/known", "guid-known");
+    const existing = await repo.listExistingKeys(keys);
+    expect(existing.has("https://example.com/known")).toBe(true);
+    expect(existing.has("guid-known")).toBe(true);
+    expect(existing.has("https://example.com/x10")).toBe(false);
+  });
+
   it("does not duplicate an article with the same url", async () => {
     const input = { ...base, url: "https://example.com/a", title: "t", categoryId };
     await repo.saveArticle(input);

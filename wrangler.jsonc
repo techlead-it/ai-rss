@@ -19,7 +19,9 @@
     }
   ],
   "ai": {
-    "binding": "AI"
+    "binding": "AI",
+    // ローカル開発でも Workers AI は常にリモート実行（本番でも有効）
+    "remote": true
   },
   "triggers": {
     // 3日に1回（毎月3日刻みの 00:00 UTC）収集パイプラインを実行

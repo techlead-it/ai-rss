@@ -156,6 +156,8 @@ export async function runCollection(
       const labelIds: number[] = [];
       for (const raw of analysis.labels) {
         const name = normalizeLabel(raw, existingLabels);
+        // 空ラベルやカテゴリ名そのもの（例: セキュリティ）はラベルにしない
+        if (name === "" || name === CATEGORY_NAME) continue;
         labelIds.push(await deps.repo.getOrCreateLabel(categoryId, name));
       }
 

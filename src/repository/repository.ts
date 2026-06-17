@@ -90,17 +90,21 @@ export class Repository {
 
   async listExistingKeys(keys: string[]): Promise<Set<string>> {
     const present = new Set<string>();
-    if (keys.length === 0) return present;
-    const placeholders = keys.map(() => "?").join(", ");
-    const { results } = await this.db
-      .prepare(
-        `SELECT url, guid FROM articles WHERE url IN (${placeholders}) OR guid IN (${placeholders})`,
-      )
-      .bind(...keys, ...keys)
-      .all<{ url: string; guid: string | null }>();
-    for (const row of results) {
-      present.add(row.url);
-      if (row.guid) present.add(row.guid);
+    // D1 のバインド変数上限を超えないようキーをチャンク分割する（1クエリ最大 2*CHUNK 変数）
+    const CHUNK = 40;
+    for (let i = 0; i < keys.length; i += CHUNK) {
+      const batch = keys.slice(i, i + CHUNK);
+      const placeholders = batch.map(() => "?").join(", ");
+      const { results } = await this.db
+        .prepare(
+          `SELECT url, guid FROM articles WHERE url IN (${placeholders}) OR guid IN (${placeholders})`,
+        )
+        .bind(...batch, ...batch)
+        .all<{ url: string; guid: string | null }>();
+      for (const row of results) {
+        present.add(row.url);
+        if (row.guid) present.add(row.guid);
+      }
     }
     return present;
   }

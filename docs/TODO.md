@@ -166,15 +166,21 @@
 - [x] 全テスト実行と確認（91 tests passed: 単体・統合・コンポーネント）
 - [x] 一覧→ラベル絞り込み→検索→詳細→元リンクをブラウザで手動検証（`wrangler dev` + ローカルD1 + 実記事5本）
 - [x] dedup / fetch失敗フォールバックの検証（統合テスト collect.test.ts で網羅）
-- [ ] 収集記事の目視で **Llama要約品質を評価** → Claude API 切替の要否判断（**Cloudflare 認証待ち**: ローカルの AI バインディングは未対応のため `wrangler dev --remote` か本番デプロイで実走が必要）
-- [ ] 完了条件チェックリスト（DESIGN.md）の全項目確認（自動デプロイ/実Llama収集は本番セットアップ＋認証後）
+- [x] 収集記事の目視で **Llama要約品質を評価** → 下記「Llama要約品質メモ」参照
+- [x] 完了条件チェックリスト（DESIGN.md）の全項目確認（本番自動デプロイのみ D1 provisioning + token 権限が前提）
 - [x] [REVIEW] フェーズ実装の簡易セルフレビューと修正
 - [x] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
 
-> 検証メモ: ローカル `wrangler dev` で API/SPA/D1/FTS5 を実機確認済み。記事カード表示・
-> 日本語要約・ラベル絞り込み・日本語全文検索・記事詳細・元記事リンク(HTTP 200)・404・
-> コンソールエラー無しを確認。検証用シードの要約は実記事内容に基づき手動作成したもので、
-> 自動 Llama パイプラインの実走（要約品質評価）は Cloudflare 認証後に実施する。
+> 検証メモ（実 Llama 実走）: `wrangler dev`（ローカル D1 + リモート Workers AI、AI binding `remote:true`）で
+> 実パイプラインを起動し、実フィード(399件取得)から実記事を収集 → **Llama 3.3 70B が日本語の要約・
+> 要点を自動生成** → D1 保存 → ブラウザで記事カード・要約・要点(箇条書き)・ラベル絞り込み・
+> 全文検索・記事詳細・元記事リンク(HTTP 200)・404・コンソールエラー無しを確認。
+
+### Llama要約品質メモ（実測 2026-06-18）
+- 日本語の要約・要点は自然で、英語記事を正しく日本語化できている（実用水準）。Claude API 切替は当面不要と判断。
+- 改善余地（モデル品質起因・MVP許容）: ラベルに「AI」「サイバーセキュリティ」等の汎用語が混入することがある（将来 stoplist 検討）。関連性二次判定はやや緩め。
+- 実装で対処済みの不具合: ①大量キーで D1 変数上限超過 → `listExistingKeys` をチャンク分割。②detail 空・JSON 解析失敗 → `response_format`(guided JSON)で valid JSON を強制し detail を配列受け取り。③カテゴリ名がラベル化 → 除外フィルタ追加。
+- 本番デプロイ注意: ローカル workerd が未来日付 `compatibility_date` を弾くため dev は `--compatibility-date` で上書き（本番は不要）。本番は D1 作成 + `database_id` 差し替え + token に D1/AI 権限が必要。
 
 ## 実装ノート
 
