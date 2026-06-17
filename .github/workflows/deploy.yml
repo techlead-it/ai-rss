@@ -34,12 +34,14 @@ jobs:
       - name: Build
         run: vp build
 
+      # マイグレーションは D1 権限を持つ専用トークン(CLOUDFLARE_D1_TOKEN)で実行する
       - name: Apply D1 migrations
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: vp exec wrangler d1 migrations apply ai-rss --remote
 
+      # デプロイは Workers Scripts 権限のデプロイ用トークン(CLOUDFLARE_API_TOKEN)で実行する
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
