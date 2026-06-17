@@ -367,6 +367,27 @@ describe("runCollection feed failures", () => {
   });
 });
 
+describe("runCollection label list retrieval", () => {
+  it("loads the existing label list only once per tick regardless of article count", async () => {
+    const feed = rss([
+      { url: "https://art.test/1", title: "LLM prompt injection 1" },
+      { url: "https://art.test/2", title: "LLM prompt injection 2" },
+      { url: "https://art.test/3", title: "LLM prompt injection 3" },
+    ]);
+    let calls = 0;
+    const original = repo.listLabelNames.bind(repo);
+    repo.listLabelNames = async (categoryId: number) => {
+      calls++;
+      return original(categoryId);
+    };
+
+    const summary = await runCollection(baseDeps({ http: fakeHttp(feed) }));
+
+    expect(summary.saved).toBe(3);
+    expect(calls).toBe(1);
+  });
+});
+
 describe("runCollection summary log", () => {
   it("emits a collection summary line", async () => {
     const logs: string[] = [];

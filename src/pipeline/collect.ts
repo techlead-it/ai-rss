@@ -162,12 +162,16 @@ export async function runCollection(
   );
   summary.deferred = deferred;
 
+  // ラベル一覧はループ前に1回取得し、ループ中に作成した新規ラベルはローカル Set
+  // に追記する。1記事ごとに D1 へ再問い合わせするのを避けるため。
+  const labelNamesSet = new Set(await deps.repo.listLabelNames(categoryId));
+
   for (const item of picked) {
     try {
       const { body, fetchFailed } = await resolveArticleBody(item, deps.http);
       if (fetchFailed) summary.fetchFailed++;
 
-      const existingLabels = await deps.repo.listLabelNames(categoryId);
+      const existingLabels = Array.from(labelNamesSet);
 
       let analysis: ArticleAnalysis;
       try {
@@ -200,6 +204,7 @@ export async function runCollection(
         // 空ラベルやカテゴリ名そのもの（例: セキュリティ）はラベルにしない
         if (name === "" || name === CATEGORY_NAME) continue;
         labelIds.push(await deps.repo.getOrCreateLabel(categoryId, name));
+        labelNamesSet.add(name);
       }
 
       await deps.repo.saveArticle({
