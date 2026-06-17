@@ -10,7 +10,7 @@ export function ArticleCard({
   onLabelClick?: (slug: string) => void;
 }) {
   return (
-    <article className="rounded-[--radius-card] border border-line bg-surface p-5 shadow-sm">
+    <article className="relative rounded-[--radius-card] border border-line bg-surface p-5 shadow-sm transition hover:border-accent hover:shadow-md">
       <div className="flex items-center gap-2 font-mono text-xs text-muted">
         <span>{article.source}</span>
         {article.publishedAt && (
@@ -29,7 +29,10 @@ export function ArticleCard({
       </div>
 
       <h2 className="mt-2 text-lg font-semibold leading-snug">
-        <Link to={`/articles/${article.id}`} className="hover:text-accent">
+        <Link
+          to={`/articles/${article.id}`}
+          className="before:absolute before:inset-0 hover:text-accent"
+        >
           {article.title}
         </Link>
       </h2>
@@ -39,7 +42,7 @@ export function ArticleCard({
       </p>
 
       {article.labels.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="relative z-10 mt-3 flex flex-wrap gap-1.5">
           {article.labels.map((label) => (
             <button
               key={label.slug}
