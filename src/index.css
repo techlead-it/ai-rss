@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  /* プロジェクト固有のテーマは frontend-design スキルで確立し、ここに反映する */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}
