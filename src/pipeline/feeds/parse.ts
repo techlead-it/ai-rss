@@ -44,14 +44,18 @@ function pickAtomLink(link: unknown): string {
 }
 
 function parseRssItems(channel: XmlNode, source: string): FeedItem[] {
-  return toArray<XmlNode>(channel.item as XmlNode | XmlNode[]).map((item) => ({
-    url: textOf(item.link).trim(),
-    guid: item.guid != null ? textOf(item.guid) : null,
-    source,
-    title: htmlToText(textOf(item.title)),
-    excerpt: htmlToText(textOf(item.description)),
-    publishedAt: toIso(textOf(item.pubDate)),
-  }));
+  return toArray<XmlNode>(channel.item as XmlNode | XmlNode[]).map((item) => {
+    // pubDate が無いフィード（RDF系・dc namespace 利用）は dc:date を fallback で見る
+    const date = textOf(item.pubDate) || textOf(item["dc:date"]);
+    return {
+      url: textOf(item.link).trim(),
+      guid: item.guid != null ? textOf(item.guid) : null,
+      source,
+      title: htmlToText(textOf(item.title)),
+      excerpt: htmlToText(textOf(item.description)),
+      publishedAt: toIso(date),
+    };
+  });
 }
 
 function parseAtomEntries(feed: XmlNode, source: string): FeedItem[] {

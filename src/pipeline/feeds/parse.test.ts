@@ -66,6 +66,37 @@ describe("parseFeed", () => {
     });
   });
 
+  it("falls back to dc:date when pubDate is absent", () => {
+    const xml = `<?xml version="1.0"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel><title>F</title>
+    <item>
+      <title>T</title>
+      <link>https://e.com/1</link>
+      <dc:date>2026-06-10T03:00:00Z</dc:date>
+      <description>d</description>
+    </item>
+  </channel>
+</rss>`;
+    const items = parseFeed(xml, "F");
+    expect(items[0].publishedAt).toBe("2026-06-10T03:00:00.000Z");
+  });
+
+  it("keeps the link as url even when guid has isPermaLink=false", () => {
+    const xml = `<?xml version="1.0"?><rss version="2.0"><channel><title>F</title>
+<item>
+  <title>T</title>
+  <link>https://e.com/post-1</link>
+  <guid isPermaLink="false">tag:e.com,2026:abc</guid>
+  <pubDate>Wed, 17 Jun 2026 09:00:00 GMT</pubDate>
+  <description>d</description>
+</item>
+</channel></rss>`;
+    const items = parseFeed(xml, "F");
+    expect(items[0].url).toBe("https://e.com/post-1");
+    expect(items[0].guid).toBe("tag:e.com,2026:abc");
+  });
+
   it("strips HTML markup and decodes entities from RSS titles", () => {
     const xml = `<?xml version="1.0"?><rss version="2.0"><channel><title>F</title>
 <item><title>Breaking Opus 4.7 with ChatGPT (Hacking Claude&#39;s Memory)</title>
