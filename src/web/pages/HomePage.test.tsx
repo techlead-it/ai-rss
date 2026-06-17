@@ -62,6 +62,19 @@ describe("HomePage", () => {
     expect(screen.getByText("記事B")).toBeInTheDocument();
   });
 
+  it("shows the total article count", async () => {
+    const api = fakeApi({
+      listArticles: async () => ({
+        items: [article(1, "記事A"), article(2, "記事B")],
+        page: 1,
+        perPage: 50,
+        total: 2,
+      }),
+    });
+    renderHome(api);
+    expect(await screen.findByText("2 件の記事")).toBeInTheDocument();
+  });
+
   it("shows a loading state initially", () => {
     const api = fakeApi({ listArticles: () => new Promise<ArticleListResponse>(() => {}) });
     renderHome(api);

@@ -27,7 +27,7 @@ export function SearchBox({
       />
       <button
         type="submit"
-        className="rounded-md bg-accent px-4 py-2 text-sm text-surface"
+        className="shrink-0 whitespace-nowrap rounded-md bg-accent px-4 py-2 text-sm text-surface"
       >
         検索
       </button>

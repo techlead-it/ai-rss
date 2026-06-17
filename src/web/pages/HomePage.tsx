@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useApi } from "../api/context";
 import { useAsync } from "../hooks/useAsync";
 import { ArticleCard } from "../components/ArticleCard";
@@ -26,11 +26,19 @@ export function HomePage() {
   );
 
   return (
-    <div className="mx-auto min-h-screen max-w-2xl px-4 pb-16">
+    <div className="mx-auto min-h-screen max-w-6xl px-4 pb-16">
       <header className="py-8">
-        <h1 className="text-2xl font-bold tracking-tight">
-          AIセキュリティ・ダイジェスト
-        </h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">
+            AIセキュリティ・ダイジェスト
+          </h1>
+          <Link
+            to="/sources"
+            className="shrink-0 whitespace-nowrap font-mono text-xs text-accent"
+          >
+            ソース一覧 →
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-muted">
           各種ソースから AI セキュリティ関連記事を収集し、日本語で要約しています。
         </p>
@@ -79,16 +87,21 @@ export function HomePage() {
         <p className="text-sm text-muted">該当する記事がありません。</p>
       )}
       {articles.status === "ready" && articles.data.items.length > 0 && (
-        <ul className="flex flex-col gap-4">
-          {articles.data.items.map((article) => (
-            <li key={article.id}>
-              <ArticleCard
-                article={article}
-                onLabelClick={(slug) => setFilter({ label: slug })}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className="mb-4 text-sm text-muted">
+            {articles.data.total} 件の記事
+          </p>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {articles.data.items.map((article) => (
+              <li key={article.id}>
+                <ArticleCard
+                  article={article}
+                  onLabelClick={(slug) => setFilter({ label: slug })}
+                />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   );
