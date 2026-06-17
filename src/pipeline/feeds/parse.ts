@@ -48,7 +48,7 @@ function parseRssItems(channel: XmlNode, source: string): FeedItem[] {
     url: textOf(item.link).trim(),
     guid: item.guid != null ? textOf(item.guid) : null,
     source,
-    title: textOf(item.title).trim(),
+    title: htmlToText(textOf(item.title)),
     excerpt: htmlToText(textOf(item.description)),
     publishedAt: toIso(textOf(item.pubDate)),
   }));
@@ -59,7 +59,7 @@ function parseAtomEntries(feed: XmlNode, source: string): FeedItem[] {
     url: pickAtomLink(entry.link).trim(),
     guid: entry.id != null ? textOf(entry.id) : null,
     source,
-    title: textOf(entry.title).trim(),
+    title: htmlToText(textOf(entry.title)),
     excerpt: htmlToText(textOf(entry.content ?? entry.summary)),
     publishedAt: toIso(textOf(entry.updated ?? entry.published)),
   }));

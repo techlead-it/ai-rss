@@ -66,6 +66,33 @@ describe("parseFeed", () => {
     });
   });
 
+  it("strips HTML markup and decodes entities from RSS titles", () => {
+    const xml = `<?xml version="1.0"?><rss version="2.0"><channel><title>F</title>
+<item><title>Breaking Opus 4.7 with ChatGPT (Hacking Claude&#39;s Memory)</title>
+<link>https://x/1</link><description>d</description></item>
+</channel></rss>`;
+    const items = parseFeed(xml, "F");
+    expect(items[0].title).toBe(
+      "Breaking Opus 4.7 with ChatGPT (Hacking Claude's Memory)",
+    );
+  });
+
+  it("strips HTML markup from Atom titles with type=html", () => {
+    const atom = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>F</title>
+  <entry>
+    <title type="html">Why &lt;b&gt;LLM&lt;/b&gt; security matters</title>
+    <link rel="alternate" href="https://e/1"/>
+    <id>id-1</id>
+    <updated>2026-06-15T12:00:00Z</updated>
+    <summary>s</summary>
+  </entry>
+</feed>`;
+    const items = parseFeed(atom, "F");
+    expect(items[0].title).toBe("Why LLM security matters");
+  });
+
   it("prefers Atom content over summary when both are present", () => {
     const atom = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
