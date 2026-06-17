@@ -2,6 +2,7 @@ import type { Ai } from "@cloudflare/workers-types";
 import type { AiEngine } from "./engine";
 import type { ArticleAnalysis } from "../pipeline/types";
 import { buildAnalysisPrompt } from "../pipeline/prompt";
+import { NeuronLimitError, isNeuronLimitError } from "./errors";
 
 // 採用モデル（docs/MODELS.md 参照）。要約・分類とも単一モデルで実行する。
 export const SUMMARY_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
@@ -48,12 +49,18 @@ export function createWorkersAiEngine(ai: Ai, model = SUMMARY_MODEL): AiEngine {
   return {
     async analyze(input) {
       const { system, user } = buildAnalysisPrompt(input);
-      const raw = await ai.run(model, {
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      });
+      let raw: unknown;
+      try {
+        raw = await ai.run(model, {
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+        });
+      } catch (err) {
+        if (isNeuronLimitError(err)) throw new NeuronLimitError();
+        throw err;
+      }
       return parseAnalysis(raw);
     },
   };

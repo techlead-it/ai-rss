@@ -1,0 +1,191 @@
+import type { HttpClient } from "./http";
+import type { FeedDef } from "./feeds/fetch";
+import type { AiEngine } from "../ai/engine";
+import type { Repository } from "../repository/repository";
+import type { ArticleAnalysis, FeedItem } from "./types";
+import { collectFeedItems } from "./feeds/fetch";
+import { dedupKey } from "./dedup";
+import { isLikelyAiSecurity } from "./relevance";
+import { resolveArticleBody } from "./extract";
+import { normalizeLabel } from "./labels";
+import { NeuronLimitError } from "../ai/errors";
+
+const CATEGORY_NAME = "セキュリティ";
+const CATEGORY_SLUG = "security";
+const DEFAULT_CAP = 10;
+const DEFAULT_MAX_RETRIES = 2;
+const RETRY_BASE_MS = 200;
+
+export interface PipelineDeps {
+  feeds: FeedDef[];
+  http: HttpClient;
+  ai: AiEngine;
+  repo: Repository;
+  /** 1 tick の処理上限。超過分は次回に繰り越す */
+  cap?: number;
+  /** AI 一時エラーのリトライ回数 */
+  maxRetries?: number;
+  sleep?: (ms: number) => Promise<void>;
+  logger?: (message: string) => void;
+}
+
+export interface CollectionSummary {
+  fetched: number;
+  newCount: number;
+  saved: number;
+  excluded: number;
+  fetchFailed: number;
+  aiErrors: number;
+  deferred: number;
+  neuronLimitReached: boolean;
+}
+
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/** dedupKey でバッチ内重複を排除した記事一覧と、その dedup キーを返す。 */
+function dedupeWithinBatch(items: FeedItem[]): Array<{ item: FeedItem; key: string }> {
+  const seen = new Set<string>();
+  const result: Array<{ item: FeedItem; key: string }> = [];
+  for (const item of items) {
+    const key = dedupKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push({ item, key });
+  }
+  return result;
+}
+
+async function analyzeWithRetry(
+  ai: AiEngine,
+  input: Parameters<AiEngine["analyze"]>[0],
+  maxRetries: number,
+  sleep: (ms: number) => Promise<void>,
+): Promise<ArticleAnalysis> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await ai.analyze(input);
+    } catch (err) {
+      if (err instanceof NeuronLimitError) throw err;
+      if (attempt >= maxRetries) throw err;
+      await sleep(RETRY_BASE_MS * 2 ** attempt);
+    }
+  }
+}
+
+/**
+ * 収集パイプライン本体。取得→新着抽出→一次フィルタ→上限キャップ→本文取得→
+ * 二次判定→要約→ラベル分類→永続化を実行する。全 I/O は注入されたフェイクで置換可能。
+ */
+export async function runCollection(
+  deps: PipelineDeps,
+): Promise<CollectionSummary> {
+  const cap = deps.cap ?? DEFAULT_CAP;
+  const maxRetries = deps.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const sleep = deps.sleep ?? defaultSleep;
+  const log = deps.logger ?? (() => {});
+  const summary: CollectionSummary = {
+    fetched: 0,
+    newCount: 0,
+    saved: 0,
+    excluded: 0,
+    fetchFailed: 0,
+    aiErrors: 0,
+    deferred: 0,
+    neuronLimitReached: false,
+  };
+
+  const categoryId = await deps.repo.getOrCreateCategory(
+    CATEGORY_NAME,
+    CATEGORY_SLUG,
+  );
+
+  const items = await collectFeedItems(deps.feeds, deps.http);
+  summary.fetched = items.length;
+
+  const candidates = dedupeWithinBatch(items);
+  const existing = await deps.repo.listExistingKeys(
+    candidates.map((c) => c.key),
+  );
+  const fresh = candidates.filter((c) => !existing.has(c.key));
+  summary.newCount = fresh.length;
+
+  // 一次キーワードフィルタ（安価）で明らかな無関係を除外
+  const passedFirst = fresh.filter((c) => {
+    const ok = isLikelyAiSecurity(`${c.item.title} ${c.item.excerpt}`);
+    if (!ok) summary.excluded++;
+    return ok;
+  });
+
+  // 上限キャップ。超過分は保存しないため次回 tick で再度新着として拾われる
+  const capped = passedFirst.slice(0, cap);
+  summary.deferred = passedFirst.length - capped.length;
+
+  for (const { item } of capped) {
+    try {
+      const { body, fetchFailed } = await resolveArticleBody(item, deps.http);
+      if (fetchFailed) summary.fetchFailed++;
+
+      const existingLabels = await deps.repo.listLabelNames(categoryId);
+
+      let analysis: ArticleAnalysis;
+      try {
+        analysis = await analyzeWithRetry(
+          deps.ai,
+          { title: item.title, body, source: item.source, existingLabels },
+          maxRetries,
+          sleep,
+        );
+      } catch (err) {
+        if (err instanceof NeuronLimitError) {
+          summary.neuronLimitReached = true;
+          log("Neuron 日次上限に到達。処理済み分をコミットして終了します。");
+          break;
+        }
+        summary.aiErrors++;
+        log(`AI 解析に失敗（スキップ）: ${item.url}`);
+        continue;
+      }
+
+      // 二次関連性判定で AI セキュリティ以外を除外
+      if (!analysis.relevant) {
+        summary.excluded++;
+        continue;
+      }
+
+      const labelIds: number[] = [];
+      for (const raw of analysis.labels) {
+        const name = normalizeLabel(raw, existingLabels);
+        labelIds.push(await deps.repo.getOrCreateLabel(categoryId, name));
+      }
+
+      await deps.repo.saveArticle({
+        url: item.url,
+        guid: item.guid,
+        source: item.source,
+        title: item.title,
+        categoryId,
+        summary: analysis.summary,
+        detail: analysis.detail,
+        originalLang: analysis.originalLang,
+        publishedAt: item.publishedAt,
+        fetchFailed,
+        labelIds,
+      });
+      summary.saved++;
+    } catch (err) {
+      // 記事単位の予期せぬ失敗は分離し、全体を止めない
+      summary.aiErrors++;
+      const message = err instanceof Error ? err.message : String(err);
+      log(`記事処理に失敗（スキップ）: ${item.url}: ${message}`);
+    }
+  }
+
+  log(
+    `収集サマリ: 取得=${summary.fetched} 新規=${summary.newCount} ` +
+      `保存=${summary.saved} 除外=${summary.excluded} ` +
+      `取得失敗=${summary.fetchFailed} AIエラー=${summary.aiErrors} ` +
+      `繰越=${summary.deferred} Neuron上限=${summary.neuronLimitReached}`,
+  );
+  return summary;
+}
