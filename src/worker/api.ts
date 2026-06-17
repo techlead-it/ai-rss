@@ -1,8 +1,25 @@
 import type { Repository } from "../repository/repository";
+import type { FeedDef } from "../pipeline/feeds/fetch";
+import type { SourceDto } from "../pipeline/types";
 
 export interface ApiResponse {
   status: number;
   body: unknown;
+}
+
+/** フィード定義と収集件数をマージしてリソース一覧用 DTO を組み立てる。 */
+export function buildSourceList(
+  feeds: FeedDef[],
+  counts: { source: string; count: number }[],
+): SourceDto[] {
+  const countBySource = new Map(counts.map((c) => [c.source, c.count]));
+  return feeds.map((feed) => ({
+    source: feed.source,
+    url: feed.url,
+    kind: feed.kind ?? "その他",
+    filtered: Boolean(feed.keywords && feed.keywords.length > 0),
+    count: countBySource.get(feed.source) ?? 0,
+  }));
 }
 
 const MAX_PER_PAGE = 50;
@@ -40,6 +57,7 @@ export async function routeApi(
   pathname: string,
   params: URLSearchParams,
   repo: Repository,
+  feeds: FeedDef[],
 ): Promise<ApiResponse | null> {
   if (!pathname.startsWith("/api/")) return null;
   if (method !== "GET") {
@@ -68,6 +86,11 @@ export async function routeApi(
 
   if (segments[1] === "categories" && segments.length === 2) {
     return { status: 200, body: await repo.listCategories() };
+  }
+
+  if (segments[1] === "sources" && segments.length === 2) {
+    const counts = await repo.countArticlesBySource();
+    return { status: 200, body: buildSourceList(feeds, counts) };
   }
 
   return { status: 404, body: { error: "not found" } };

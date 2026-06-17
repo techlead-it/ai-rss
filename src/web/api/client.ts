@@ -2,6 +2,7 @@ import type {
   ArticleDto,
   ArticleListResponse,
   LabelWithCount,
+  SourceDto,
   TaxonomyRef,
 } from "../../pipeline/types";
 
@@ -19,6 +20,7 @@ export interface ApiClient {
   getArticle(id: number): Promise<ArticleDto | null>;
   listLabels(category?: string): Promise<LabelWithCount[]>;
   listCategories(): Promise<TaxonomyRef[]>;
+  listSources(): Promise<SourceDto[]>;
 }
 
 function queryString(
@@ -62,5 +64,8 @@ export const httpApiClient: ApiClient = {
   },
   listCategories() {
     return getJson<TaxonomyRef[]>("/api/categories");
+  },
+  listSources() {
+    return getJson<SourceDto[]>("/api/sources");
   },
 };

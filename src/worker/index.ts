@@ -19,6 +19,7 @@ export default {
       url.pathname,
       url.searchParams,
       new Repository(env.DB),
+      FEEDS,
     );
     if (result) {
       // global の Response(DOM 型) を Worker の CF Response 型へ橋渡しする

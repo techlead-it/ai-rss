@@ -36,34 +36,51 @@ const ARXIV_LLM_KEYWORDS = [
  */
 export const FEEDS: FeedDef[] = [
   // 専門（AI セキュリティ中心）
-  { source: "Simon Willison's Weblog", url: "https://simonwillison.net/atom/everything/" },
-  { source: "Embrace The Red", url: "https://embracethered.com/blog/index.xml" },
-  { source: "Trail of Bits", url: "https://blog.trailofbits.com/index.xml" },
+  {
+    source: "Simon Willison's Weblog",
+    url: "https://simonwillison.net/atom/everything/",
+    kind: "専門",
+  },
+  {
+    source: "Embrace The Red",
+    url: "https://embracethered.com/blog/index.xml",
+    kind: "専門",
+  },
+  {
+    source: "Trail of Bits",
+    url: "https://blog.trailofbits.com/index.xml",
+    kind: "専門",
+  },
   // ベンダー・標準
   {
     source: "Google Security Blog",
     url: "https://feeds.feedburner.com/GoogleOnlineSecurityBlog",
+    kind: "ベンダー",
   },
   // ニュース（AI 関連に絞り込み）
   {
     source: "The Hacker News",
     url: "https://feeds.feedburner.com/TheHackersNews",
+    kind: "ニュース",
     keywords: AI_KEYWORDS,
   },
   {
     source: "BleepingComputer",
     url: "https://www.bleepingcomputer.com/feed/",
+    kind: "ニュース",
     keywords: AI_KEYWORDS,
   },
   {
     source: "Dark Reading",
     url: "https://www.darkreading.com/rss.xml",
+    kind: "ニュース",
     keywords: AI_KEYWORDS,
   },
   // 研究（LLM/プロンプト系に絞り込み）
   {
     source: "arXiv cs.CR",
     url: "https://export.arxiv.org/rss/cs.CR",
+    kind: "研究",
     keywords: ARXIV_LLM_KEYWORDS,
   },
 ];

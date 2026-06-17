@@ -7,6 +7,8 @@ export interface FeedDef {
   source: string;
   /** フィード URL */
   url: string;
+  /** 種別（リソース一覧画面での分類表示用。例: 専門/ベンダー/ニュース/研究） */
+  kind?: string;
   /** 指定時、タイトル/抜粋がいずれかのキーワードを含む記事だけを採用（高ボリューム源の絞り込み） */
   keywords?: string[];
 }

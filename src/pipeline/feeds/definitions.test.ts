@@ -16,6 +16,12 @@ describe("FEEDS", () => {
     expect(sources).toContain("Embrace The Red");
   });
 
+  it("classifies every feed with a kind for the sources screen", () => {
+    for (const feed of FEEDS) {
+      expect(feed.kind?.length).toBeGreaterThan(0);
+    }
+  });
+
   it("narrows the high-volume arXiv feed with keywords", () => {
     const arxiv = FEEDS.find((f) => f.source === "arXiv cs.CR");
     expect(arxiv?.keywords?.length).toBeGreaterThan(0);

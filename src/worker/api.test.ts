@@ -2,8 +2,19 @@ import { describe, it, expect, beforeEach } from "vite-plus/test";
 import { routeApi } from "./api";
 import { Repository } from "../repository/repository";
 import { createTestD1 } from "../repository/d1-fake";
+import type { FeedDef } from "../pipeline/feeds/fetch";
 
 let repo: Repository;
+
+const feeds: FeedDef[] = [
+  { source: "Test", url: "https://test.example/feed", kind: "専門" },
+  {
+    source: "News",
+    url: "https://news.example/feed",
+    kind: "ニュース",
+    keywords: ["ai"],
+  },
+];
 
 async function seed() {
   const categoryId = await repo.getOrCreateCategory("セキュリティ", "security");
@@ -37,7 +48,7 @@ async function seed() {
 }
 
 function call(method: string, path: string, query = "") {
-  return routeApi(method, path, new URLSearchParams(query), repo);
+  return routeApi(method, path, new URLSearchParams(query), repo, feeds);
 }
 
 beforeEach(async () => {
@@ -103,6 +114,27 @@ describe("routeApi taxonomy endpoints", () => {
   it("lists categories", async () => {
     const res = await call("GET", "/api/categories");
     expect(res?.body).toEqual([{ name: "セキュリティ", slug: "security" }]);
+  });
+
+  it("lists sources with kind, filter flag and collected counts", async () => {
+    const res = await call("GET", "/api/sources");
+    expect(res?.status).toBe(200);
+    expect(res?.body).toEqual([
+      {
+        source: "Test",
+        url: "https://test.example/feed",
+        kind: "専門",
+        filtered: false,
+        count: 2,
+      },
+      {
+        source: "News",
+        url: "https://news.example/feed",
+        kind: "ニュース",
+        filtered: true,
+        count: 0,
+      },
+    ]);
   });
 });
 

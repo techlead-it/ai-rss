@@ -233,6 +233,15 @@ export class Repository {
     return results;
   }
 
+  async countArticlesBySource(): Promise<{ source: string; count: number }[]> {
+    const { results } = await this.db
+      .prepare(
+        "SELECT source, COUNT(*) AS count FROM articles GROUP BY source ORDER BY source",
+      )
+      .all<{ source: string; count: number }>();
+    return results;
+  }
+
   async listLabels(categorySlug?: string): Promise<LabelWithCount[]> {
     const where = categorySlug
       ? "WHERE l.category_id = (SELECT id FROM categories WHERE slug = ?)"

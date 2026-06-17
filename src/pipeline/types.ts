@@ -54,6 +54,20 @@ export interface LabelWithCount extends TaxonomyRef {
   count: number;
 }
 
+/** データ取得元（フィード）と収集件数を表すリソース一覧用 DTO */
+export interface SourceDto {
+  /** ソース表示名（articles.source と一致） */
+  source: string;
+  /** フィード URL */
+  url: string;
+  /** 種別（専門/ベンダー/ニュース/研究 等） */
+  kind: string;
+  /** キーワードによる一次絞り込みを行っているか */
+  filtered: boolean;
+  /** これまでに収集できた記事数 */
+  count: number;
+}
+
 /** 記事一覧 API のレスポンス */
 export interface ArticleListResponse {
   items: ArticleDto[];

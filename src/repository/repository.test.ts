@@ -169,4 +169,10 @@ describe("Repository listing, search and filters", () => {
       { name: "セキュリティ", slug: "security" },
     ]);
   });
+
+  it("counts articles grouped by source", async () => {
+    expect(await repo.countArticlesBySource()).toEqual([
+      { source: "Example", count: 3 },
+    ]);
+  });
 });

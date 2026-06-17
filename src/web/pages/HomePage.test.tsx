@@ -32,6 +32,7 @@ function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
       { name: "プロンプトインジェクション", slug: "prompt-injection", count: 1 },
     ],
     listCategories: async () => [{ name: "セキュリティ", slug: "security" }],
+    listSources: async () => [],
     ...overrides,
   };
 }
