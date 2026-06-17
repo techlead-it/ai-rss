@@ -1,5 +1,5 @@
 import type { HttpClient } from "./http";
-import type { FeedDef } from "./feeds/fetch";
+import type { FeedDef, FeedFailure } from "./feeds/fetch";
 import type { AiEngine } from "../ai/engine";
 import type { Repository } from "../repository/repository";
 import type { ArticleAnalysis, FeedItem } from "./types";
@@ -38,6 +38,8 @@ export interface CollectionSummary {
   aiErrors: number;
   deferred: number;
   neuronLimitReached: boolean;
+  /** フィード単位の取得失敗（HTTPエラー or 例外）。観測ログ用 */
+  feedFailures: FeedFailure[];
 }
 
 const defaultSleep = (ms: number): Promise<void> =>
@@ -124,6 +126,7 @@ export async function runCollection(
     aiErrors: 0,
     deferred: 0,
     neuronLimitReached: false,
+    feedFailures: [],
   };
 
   const categoryId = await deps.repo.getOrCreateCategory(
@@ -131,8 +134,12 @@ export async function runCollection(
     CATEGORY_SLUG,
   );
 
-  const items = await collectFeedItems(deps.feeds, deps.http);
+  const { items, failures } = await collectFeedItems(deps.feeds, deps.http);
   summary.fetched = items.length;
+  summary.feedFailures = failures;
+  for (const failure of failures) {
+    log(`フィード取得失敗 ${failure.source}: ${failure.reason}`);
+  }
 
   const candidates = dedupeWithinBatch(items);
   const existing = await deps.repo.listExistingKeys(

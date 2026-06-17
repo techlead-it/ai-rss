@@ -20,7 +20,7 @@ function fakeHttp(map: Record<string, FetchResponse | "throw">): HttpClient {
 }
 
 describe("collectFeedItems", () => {
-  it("skips a failing feed and keeps processing the others", async () => {
+  it("skips a failing feed, records the failure, and keeps processing the others", async () => {
     const http = fakeHttp({
       "https://a.example/feed": "throw",
       "https://b.example/feed": {
@@ -29,26 +29,30 @@ describe("collectFeedItems", () => {
         text: RSS("https://b.example/post", "B post"),
       },
     });
-    const items = await collectFeedItems(
+    const result = await collectFeedItems(
       [
         { source: "A", url: "https://a.example/feed" },
         { source: "B", url: "https://b.example/feed" },
       ],
       http,
     );
-    expect(items).toHaveLength(1);
-    expect(items[0].source).toBe("B");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].source).toBe("B");
+    expect(result.failures).toEqual([
+      { source: "A", reason: "network error: https://a.example/feed" },
+    ]);
   });
 
-  it("skips feeds returning a non-ok response", async () => {
+  it("records the HTTP status when a feed returns a non-ok response", async () => {
     const http = fakeHttp({
-      "https://a.example/feed": { ok: false, status: 403, text: "" },
+      "https://a.example/feed": { ok: false, status: 503, text: "" },
     });
-    const items = await collectFeedItems(
+    const result = await collectFeedItems(
       [{ source: "A", url: "https://a.example/feed" }],
       http,
     );
-    expect(items).toEqual([]);
+    expect(result.items).toEqual([]);
+    expect(result.failures).toEqual([{ source: "A", reason: "HTTP 503" }]);
   });
 
   it("applies a per-feed keyword filter when present", async () => {
@@ -59,7 +63,7 @@ describe("collectFeedItems", () => {
     const http = fakeHttp({
       "https://arxiv.example/feed": { ok: true, status: 200, text: xml },
     });
-    const items = await collectFeedItems(
+    const result = await collectFeedItems(
       [
         {
           source: "arXiv",
@@ -69,7 +73,8 @@ describe("collectFeedItems", () => {
       ],
       http,
     );
-    expect(items).toHaveLength(1);
-    expect(items[0].title).toBe("LLM prompt injection paper");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].title).toBe("LLM prompt injection paper");
+    expect(result.failures).toEqual([]);
   });
 });

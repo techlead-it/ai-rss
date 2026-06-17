@@ -326,6 +326,47 @@ describe("runCollection AI error handling", () => {
   });
 });
 
+describe("runCollection feed failures", () => {
+  it("surfaces per-feed fetch failures in the summary and logs them", async () => {
+    const OK_URL = "https://feed.test/ok";
+    const BAD_URL = "https://feed.test/bad";
+    const http: HttpClient = {
+      async fetch(url) {
+        if (url === OK_URL) {
+          return {
+            ok: true,
+            status: 200,
+            text: rss([
+              { url: "https://art.test/ok", title: "LLM prompt injection ok" },
+            ]),
+          };
+        }
+        if (url === BAD_URL) return { ok: false, status: 503, text: "" };
+        return { ok: true, status: 200, text: richHtml(url) };
+      },
+    };
+    const logs: string[] = [];
+    const summary = await runCollection(
+      baseDeps({
+        feeds: [
+          { source: "OK", url: OK_URL },
+          { source: "BAD", url: BAD_URL },
+        ],
+        http,
+        logger: (m) => logs.push(m),
+      }),
+    );
+
+    expect(summary.feedFailures).toEqual([
+      { source: "BAD", reason: "HTTP 503" },
+    ]);
+    expect(summary.saved).toBe(1);
+    expect(logs.some((l) => l.includes("フィード取得失敗 BAD: HTTP 503"))).toBe(
+      true,
+    );
+  });
+});
+
 describe("runCollection summary log", () => {
   it("emits a collection summary line", async () => {
     const logs: string[] = [];
