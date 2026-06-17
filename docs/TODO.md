@@ -87,17 +87,17 @@
 
 ### フェーズ6: 永続化層（D1 Repository）
 
-- [ ] [RED] 記事 upsert と dedup（既存url/guidはスキップ）の統合テスト作成（D1ローカル）
-- [ ] [GREEN] 記事 upsert・dedup の実装（パラメータ化クエリ）
-- [ ] [RED] カテゴリ・ラベルの取得/新規追加・article_labels 紐付けのテスト作成
-- [ ] [GREEN] カテゴリ・ラベル永続化の実装
-- [ ] [RED] FTS5 インデックス更新と日本語キーワード検索のテスト作成
-- [ ] [GREEN] FTS5 更新・検索の実装
-- [ ] [RED] 一覧クエリ（category/label/q/ページング）のテスト作成
-- [ ] [GREEN] 一覧クエリの実装（index活用）
-- [ ] [REFACTOR] クエリ・マッピングの整理
-- [ ] [REVIEW] フェーズ実装の簡易セルフレビューと修正
-- [ ] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
+- [x] [RED] 記事 upsert と dedup（既存url/guidはスキップ）の統合テスト作成（D1ローカル）
+- [x] [GREEN] 記事 upsert・dedup の実装（パラメータ化クエリ）
+- [x] [RED] カテゴリ・ラベルの取得/新規追加・article_labels 紐付けのテスト作成
+- [x] [GREEN] カテゴリ・ラベル永続化の実装
+- [x] [RED] FTS5 インデックス更新と日本語キーワード検索のテスト作成
+- [x] [GREEN] FTS5 更新・検索の実装
+- [x] [RED] 一覧クエリ（category/label/q/ページング）のテスト作成
+- [x] [GREEN] 一覧クエリの実装（index活用）
+- [x] [REFACTOR] クエリ・マッピングの整理
+- [x] [REVIEW] フェーズ実装の簡易セルフレビューと修正
+- [x] [CHECK] `vp test` / `vp check --no-lint --no-fmt` / `vp build` の実行と確認
 
 ### フェーズ7: 収集パイプライン統合（Cron handler）
 

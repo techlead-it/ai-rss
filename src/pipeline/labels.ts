@@ -17,3 +17,20 @@ export function normalizeLabel(candidate: string, existing: string[]): string {
   const match = existing.find((e) => canonical(e) === key);
   return match ?? candidate.trim();
 }
+
+/**
+ * ラベル名から URL 用 slug を生成する。
+ * ASCII 化できればケバブケース、できない（日本語等）場合は名前から決まる短いハッシュを使う。
+ */
+export function slugify(name: string): string {
+  const ascii = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (ascii) return ascii;
+  let hash = 0;
+  for (const ch of name) {
+    hash = (hash * 31 + (ch.codePointAt(0) ?? 0)) >>> 0;
+  }
+  return `l-${hash.toString(36)}`;
+}

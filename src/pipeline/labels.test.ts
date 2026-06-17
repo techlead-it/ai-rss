@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vite-plus/test";
-import { normalizeLabel } from "./labels";
+import { normalizeLabel, slugify } from "./labels";
 
 describe("normalizeLabel (既存ラベルへの表記揺れ吸収)", () => {
   const existing = ["プロンプトインジェクション", "ジェイルブレイク", "敵対的攻撃"];
@@ -21,5 +21,19 @@ describe("normalizeLabel (既存ラベルへの表記揺れ吸収)", () => {
     expect(normalizeLabel("  データポイズニング ", existing)).toBe(
       "データポイズニング",
     );
+  });
+});
+
+describe("slugify", () => {
+  it("kebab-cases ascii names", () => {
+    expect(slugify("Prompt Injection")).toBe("prompt-injection");
+    expect(slugify("Model Theft / Extraction")).toBe("model-theft-extraction");
+  });
+
+  it("derives a stable hash slug for non-ascii names", () => {
+    const a = slugify("データポイズニング");
+    const b = slugify("データポイズニング");
+    expect(a).toBe(b);
+    expect(a).toMatch(/^l-[a-z0-9]+$/);
   });
 });
