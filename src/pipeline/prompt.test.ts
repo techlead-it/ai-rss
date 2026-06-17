@@ -42,4 +42,21 @@ describe("buildAnalysisPrompt", () => {
     expect(a).not.toContain("本文取得に失敗");
     expect(b).not.toContain("本文取得に失敗");
   });
+
+  it("caps the existing-label list at 50 items so the prompt stays bounded", () => {
+    const existingLabels = Array.from(
+      { length: 60 },
+      (_, i) => `ラベル${String(i).padStart(2, "0")}`,
+    );
+    const { user } = buildAnalysisPrompt({ ...input, existingLabels });
+    const labelLine = user
+      .split("\n")
+      .find((line) => line.startsWith("既存ラベル:"));
+    if (!labelLine) throw new Error("既存ラベル行が見つからない");
+    const labels = labelLine
+      .replace("既存ラベル: ", "")
+      .split(", ")
+      .filter((s) => s.length > 0);
+    expect(labels.length).toBe(50);
+  });
 });

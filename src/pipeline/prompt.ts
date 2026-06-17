@@ -27,12 +27,17 @@ const SYSTEM_PROMPT = [
   "要約・要点は必ず日本語で書くこと。記事本文を逐語的に転載しないこと。",
 ].join("\n");
 
+// プロンプトに含めるラベル候補の上限。多すぎると AI が表記揺れ抑制に集中できず
+// プロンプトコストも増えるため、頻出順ではなく辞書順で先頭 N 件のみ提示する。
+const MAX_LABELS_IN_PROMPT = 50;
+
 /** 記事と既存ラベルから AI への入力（system / user）を組み立てる。 */
 export function buildAnalysisPrompt(input: AnalysisPromptInput): AnalysisPrompt {
+  const limitedLabels = [...input.existingLabels]
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, MAX_LABELS_IN_PROMPT);
   const labelList =
-    input.existingLabels.length > 0
-      ? input.existingLabels.join(", ")
-      : "(まだ無し)";
+    limitedLabels.length > 0 ? limitedLabels.join(", ") : "(まだ無し)";
   const lines = [
     `ソース: ${input.source}`,
     `タイトル: ${input.title}`,
