@@ -278,7 +278,28 @@ describe("runCollection AI error handling", () => {
     );
     expect(summary.aiErrors).toBe(1);
     expect(summary.saved).toBe(0);
-    expect(slept.length).toBe(2); // 2 retries before giving up
+    expect(slept).toEqual([1000, 2000]);
+  });
+
+  it("defaults to 3 retries with exponential backoff for transient AI errors", async () => {
+    const slept: number[] = [];
+    const ai = scriptedAi(async () => {
+      throw new Error("temporary upstream error");
+    });
+    const feed = rss([
+      { url: "https://art.test/1", title: "LLM prompt injection attack" },
+    ]);
+    await runCollection(
+      baseDeps({
+        http: fakeHttp(feed),
+        ai,
+        // maxRetries 未指定でデフォルト 3 が効くこと
+        sleep: async (ms) => {
+          slept.push(ms);
+        },
+      }),
+    );
+    expect(slept).toEqual([1000, 2000, 4000]);
   });
 
   it("recovers when a transient AI error succeeds on retry", async () => {

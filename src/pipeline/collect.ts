@@ -13,8 +13,8 @@ import { NeuronLimitError } from "../ai/errors";
 const CATEGORY_NAME = "セキュリティ";
 const CATEGORY_SLUG = "security";
 const DEFAULT_CAP = 30;
-const DEFAULT_MAX_RETRIES = 2;
-const RETRY_BASE_MS = 200;
+const DEFAULT_MAX_RETRIES = 3;
+const RETRY_BASE_MS = 1000;
 
 export interface PipelineDeps {
   feeds: FeedDef[];
