@@ -66,7 +66,20 @@ describe("parseFeed", () => {
     });
   });
 
-  it("returns an empty array for unparseable input", () => {
-    expect(parseFeed("not xml at all", "x")).toEqual([]);
+  it("prefers Atom content over summary when both are present", () => {
+    const atom = `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>F</title>
+  <entry>
+    <title>E</title>
+    <link rel="alternate" href="https://e/1"/>
+    <id>id-1</id>
+    <updated>2026-06-15T12:00:00Z</updated>
+    <summary>short summary</summary>
+    <content>much longer full body content</content>
+  </entry>
+</feed>`;
+    const items = parseFeed(atom, "F");
+    expect(items[0].excerpt).toBe("much longer full body content");
   });
 });

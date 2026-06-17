@@ -60,7 +60,7 @@ function parseAtomEntries(feed: XmlNode, source: string): FeedItem[] {
     guid: entry.id != null ? textOf(entry.id) : null,
     source,
     title: textOf(entry.title).trim(),
-    excerpt: htmlToText(textOf(entry.summary ?? entry.content)),
+    excerpt: htmlToText(textOf(entry.content ?? entry.summary)),
     publishedAt: toIso(textOf(entry.updated ?? entry.published)),
   }));
 }
