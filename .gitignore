@@ -16,6 +16,9 @@ dist-ssr
 .wrangler
 .dev.vars
 
+# 環境変数 (direnv)
+.envrc
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
