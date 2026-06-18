@@ -1,6 +1,8 @@
 // 一次関連性フィルタ: 安価なキーワード判定で明らかに無関係な記事を除外する。
 // 最終判定は AI による二次関連性判定（フェーズ5）で行う。
 
+import { matchesAnyKeyword } from "./keywords";
+
 // 単独で AI セキュリティと判断できる複合語
 const STRONG_TERMS = [
   "prompt injection",
@@ -54,18 +56,15 @@ const SECURITY_TERMS = [
   "悪用",
 ];
 
-function includesAny(haystack: string, needles: string[]): boolean {
-  return needles.some((n) => haystack.includes(n));
-}
-
 /**
  * テキストが AI セキュリティに関連しそうかを判定する。
  * 強い複合語を含むか、AI 用語とセキュリティ用語の両方を含めば該当。
+ * ASCII 単語キーワードは単語境界で判定するため、'ai' が 'tailscale' 等に
+ * 部分一致して誤マッチすることはない（[[keywords]] 参照）。
  */
 export function isLikelyAiSecurity(text: string): boolean {
-  const normalized = text.toLowerCase();
-  if (includesAny(normalized, STRONG_TERMS)) return true;
+  if (matchesAnyKeyword(text, STRONG_TERMS)) return true;
   return (
-    includesAny(normalized, AI_TERMS) && includesAny(normalized, SECURITY_TERMS)
+    matchesAnyKeyword(text, AI_TERMS) && matchesAnyKeyword(text, SECURITY_TERMS)
   );
 }

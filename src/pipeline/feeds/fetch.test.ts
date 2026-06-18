@@ -86,6 +86,28 @@ describe("collectFeedItems", () => {
     expect(maxInFlight).toBeGreaterThan(1);
   });
 
+  it("does not match the keyword 'ai' as a substring of unrelated English words", async () => {
+    const xml = `<?xml version="1.0"?><rss version="2.0"><channel><title>F</title>
+<item><title>Junior Hacker Used Tailscale and OpenSSH</title><link>https://x/1</link><description>C2 access maintenance via Tailscale</description></item>
+<item><title>AI security overview</title><link>https://x/2</link><description>d</description></item>
+</channel></rss>`;
+    const http = fakeHttp({
+      "https://news.example/feed": { ok: true, status: 200, text: xml },
+    });
+    const result = await collectFeedItems(
+      [
+        {
+          source: "News",
+          url: "https://news.example/feed",
+          keywords: ["ai", "llm", "gpt"],
+        },
+      ],
+      http,
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].title).toBe("AI security overview");
+  });
+
   it("applies a per-feed keyword filter when present", async () => {
     const xml = `<?xml version="1.0"?><rss version="2.0"><channel><title>F</title>
 <item><title>LLM prompt injection paper</title><link>https://x/1</link><description>d</description></item>

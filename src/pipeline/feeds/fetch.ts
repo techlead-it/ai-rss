@@ -1,6 +1,7 @@
 import type { FeedItem } from "../types";
 import type { HttpClient } from "../http";
 import { parseFeed } from "./parse";
+import { matchesAnyKeyword } from "../keywords";
 
 export interface FeedDef {
   /** ソース表示名 */
@@ -14,8 +15,7 @@ export interface FeedDef {
 }
 
 function matchesKeywords(item: FeedItem, keywords: string[]): boolean {
-  const haystack = `${item.title} ${item.excerpt}`.toLowerCase();
-  return keywords.some((k) => haystack.includes(k.toLowerCase()));
+  return matchesAnyKeyword(`${item.title} ${item.excerpt}`, keywords);
 }
 
 export interface FeedFailure {
