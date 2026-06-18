@@ -10,7 +10,7 @@ export interface HttpClient {
   fetch(url: string): Promise<FetchResponse>;
 }
 
-const USER_AGENT = "ai-rss-bot/1.0 (+https://github.com/techlead-it/ai-rss)";
+const USER_AGENT = "ai-security-news-bot/1.0 (+https://github.com/techlead-it/ai-security-news)";
 
 /** global fetch を使う本番実装。 */
 export const httpClient: HttpClient = {

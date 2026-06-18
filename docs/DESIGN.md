@@ -1,4 +1,4 @@
-# ai-rss 設計ドキュメント
+# ai-security-news 設計ドキュメント
 
 生成日: 2026-06-18
 ジェネレーター: analyzing-requirements

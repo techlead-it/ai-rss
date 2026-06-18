@@ -1,4 +1,4 @@
-# ai-rss
+# ai-security-news
 
 各種 RSS から **AI セキュリティ関連**の記事を自動収集し、日本語の要約・要点・元リンク・
 ラベルに整理して閲覧できる完全サーバーレスサイト。Cloudflare のみで完結する。
@@ -25,7 +25,7 @@ vp build                         # SPA を dist/ へビルド
 
 # Worker + ローカル D1 + SPA を一体で起動
 vp build
-vp exec wrangler d1 migrations apply ai-rss --local   # 初回・スキーマ変更時
+vp exec wrangler d1 migrations apply ai-security-news --local   # 初回・スキーマ変更時
 vp exec wrangler dev --test-scheduled                 # 起動（収集は手動トリガー可）
 
 # 収集パイプラインを手動実行（別ターミナルで。<port> は wrangler dev の表示ポート）
@@ -38,7 +38,7 @@ ai に `"remote": true` を付けてあるので、`CLOUDFLARE_API_TOKEN`（Work
 
 ## デプロイ（本番）
 
-公開URL: https://ai-rss.techlead-it.workers.dev
+公開URL: https://ai-security-news.techlead-it.workers.dev
 
 `main` への push で `.github/workflows/deploy.yml` が test → 型チェック → build →
 D1 マイグレーション適用 → `wrangler deploy` を実行する（マイグレーションは冪等）。
@@ -57,7 +57,7 @@ D1 マイグレーション適用 → `wrangler deploy` を実行する（マイ
 
 ### セットアップ状況（済み）
 
-- D1 `ai-rss` 作成済み・`wrangler.jsonc` に `database_id` 設定済み（公開可能な識別子）
+- D1 `ai-security-news` 作成済み・`wrangler.jsonc` に `database_id` 設定済み（公開可能な識別子）
 - リモート D1 にマイグレーション適用済み
 - 上記 3 シークレット登録済み
 

@@ -1,4 +1,4 @@
-# TODO: ai-rss（AIセキュリティ情報収集サイト MVP）
+# TODO: ai-security-news（AIセキュリティ情報収集サイト MVP）
 
 作成日: 2026-06-18
 生成元: planning-tasks
@@ -16,7 +16,7 @@
 
 > 機能実装より先に「push すれば自動デプロイ・表示される」状態を作る。scaffold／シークレット登録／初回デプロイをスキルに任せる。
 
-- [ ] `demo-site-builder` スキルを起動し、`skanehira/demo-site-template` から ai-rss を scaffold（プレースホルダ置換: `__PROJECT_NAME__`=ai-rss, `__COMPATIBILITY_DATE__`）
+- [ ] `demo-site-builder` スキルを起動し、`skanehira/demo-site-template` から ai-security-news を scaffold（プレースホルダ置換: `__PROJECT_NAME__`=ai-security-news, `__COMPATIBILITY_DATE__`）
 - [ ] `vp install` / `vp dev` / `vp test` / `vp build` の動作確認
 - [ ] Cloudflare シークレット（`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`）の登録（スキル内で実施）
 - [ ] Cloudflare Workers へ初回デプロイし、**公開URLでデモサイトが表示される**ことを確認

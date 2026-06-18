@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ai-rss",
+  "name": "ai-security-news",
   "main": "src/worker/index.ts",
   "compatibility_date": "2024-12-01",
   "assets": {
@@ -11,10 +11,10 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "ai-rss",
-      // `wrangler d1 create ai-rss` で発行された ID（公開しても問題ない識別子）。
+      "database_name": "ai-security-news",
+      // `wrangler d1 create ai-security-news` で発行された ID（公開しても問題ない識別子）。
       // ローカル `wrangler dev` はこの値に関わらずローカル SQLite を使う。
-      "database_id": "9cde813a-4969-44d9-8974-a2064c5248fd",
+      "database_id": "623352f4-bfd7-41d7-950a-862d4707559a",
       "migrations_dir": "migrations"
     }
   ],

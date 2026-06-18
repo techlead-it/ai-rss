@@ -1,4 +1,4 @@
--- ai-rss 初期スキーマ
+-- ai-security-news 初期スキーマ
 -- categories: 最上位分類（MVP は「セキュリティ」のみ。将来テーマ拡張用に分離）
 CREATE TABLE categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
