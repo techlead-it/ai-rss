@@ -24,8 +24,8 @@
     "remote": true
   },
   "triggers": {
-    // 毎日 00:00 UTC に収集パイプラインを実行
-    "crons": ["0 0 * * *"]
+    // [TEMP] 検証のため一時的に 00:45 UTC に発火。検証完了後 "0 0 * * *" に戻す
+    "crons": ["45 0 * * *"]
   },
   "observability": {
     "enabled": true,
