@@ -31,6 +31,7 @@ async function seed() {
     publishedAt: "2026-06-17T00:00:00Z",
     fetchFailed: false,
     labelIds: [labelId],
+    body: null,
   });
   await repo.saveArticle({
     url: "https://example.com/2",
@@ -44,6 +45,7 @@ async function seed() {
     publishedAt: "2026-06-16T00:00:00Z",
     fetchFailed: false,
     labelIds: [],
+    body: null,
   });
 }
 

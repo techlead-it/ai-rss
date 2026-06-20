@@ -4,6 +4,7 @@ import { Repository } from "../repository/repository";
 import { createTestD1 } from "../repository/d1-fake";
 import { createFakeAiEngine } from "../ai/fake";
 import { NeuronLimitError } from "../ai/errors";
+import type { D1Database } from "@cloudflare/workers-types";
 import type { HttpClient } from "./http";
 import type { AiEngine } from "../ai/engine";
 import type { ArticleAnalysis } from "./types";
@@ -49,6 +50,7 @@ function scriptedAi(
 }
 
 let repo: Repository;
+let db: D1Database;
 function baseDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
   return {
     feeds: [{ source: "Test", url: FEED_URL }],
@@ -61,7 +63,8 @@ function baseDeps(overrides: Partial<PipelineDeps> = {}): PipelineDeps {
 }
 
 beforeEach(() => {
-  repo = new Repository(createTestD1());
+  db = createTestD1();
+  repo = new Repository(db);
 });
 
 describe("runCollection happy path", () => {
@@ -95,6 +98,7 @@ describe("runCollection dedup and filters", () => {
       publishedAt: null,
       fetchFailed: false,
       labelIds: [],
+      body: null,
     });
     const feed = rss([
       { url: "https://art.test/1", title: "LLM prompt injection attack" },
@@ -152,6 +156,36 @@ describe("runCollection caps and fallbacks", () => {
     expect(summary.saved).toBe(1);
     const list = await repo.listArticles({ page: 1, perPage: 20 });
     expect(list.items[0].fetchFailed).toBe(true);
+  });
+});
+
+describe("runCollection body persistence", () => {
+  it("saves the extracted article body to the body column", async () => {
+    const feed = rss([
+      { url: "https://art.test/1", title: "LLM prompt injection attack" },
+    ]);
+    await runCollection(baseDeps({ http: fakeHttp(feed) }));
+    const row = await db
+      .prepare("SELECT body FROM articles WHERE url = ?")
+      .bind("https://art.test/1")
+      .first<{ body: string | null }>();
+    expect(row?.body).toContain("本文の段落。");
+  });
+
+  it("stores null body when the article fetch fails", async () => {
+    const feed = rss([
+      { url: "https://art.test/1", title: "LLM prompt injection attack" },
+    ]);
+    await runCollection(
+      baseDeps({
+        http: fakeHttp(feed, new Set(["https://art.test/1"])),
+      }),
+    );
+    const row = await db
+      .prepare("SELECT body FROM articles WHERE url = ?")
+      .bind("https://art.test/1")
+      .first<{ body: string | null }>();
+    expect(row).toEqual({ body: null });
   });
 });
 

@@ -22,6 +22,8 @@ export interface SaveArticleInput {
   publishedAt: string | null;
   fetchFailed: boolean;
   labelIds: number[];
+  /** 抽出済み記事本文（全文）。取得失敗時は null */
+  body: string | null;
 }
 
 export interface ListQuery {
@@ -114,8 +116,8 @@ export class Repository {
     await this.db
       .prepare(
         `INSERT INTO articles
-           (url, guid, source, title, category_id, summary, detail, original_lang, published_at, fetched_at, fetch_failed)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           (url, guid, source, title, category_id, summary, detail, original_lang, published_at, fetched_at, fetch_failed, body)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (url) DO NOTHING`,
       )
       .bind(
@@ -130,6 +132,7 @@ export class Repository {
         input.publishedAt,
         fetchedAt,
         input.fetchFailed ? 1 : 0,
+        input.body,
       )
       .run();
 

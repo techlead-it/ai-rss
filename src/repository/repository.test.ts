@@ -25,6 +25,7 @@ const base = {
   publishedAt: "2026-06-15T00:00:00Z",
   fetchFailed: false,
   labelIds: [] as number[],
+  body: null as string | null,
 };
 
 describe("Repository taxonomy", () => {
@@ -94,6 +95,36 @@ describe("Repository article persistence and dedup", () => {
     expect(existing.has("https://example.com/known")).toBe(true);
     expect(existing.has("guid-known")).toBe(true);
     expect(existing.has("https://example.com/x10")).toBe(false);
+  });
+
+  it("persists the body text and exposes it via raw SQL", async () => {
+    await repo.saveArticle({
+      ...base,
+      url: "https://example.com/with-body",
+      title: "t",
+      categoryId,
+      body: "抽出した本文テキスト全文",
+    });
+    const row = await db
+      .prepare("SELECT body FROM articles WHERE url = ?")
+      .bind("https://example.com/with-body")
+      .first<{ body: string | null }>();
+    expect(row).toEqual({ body: "抽出した本文テキスト全文" });
+  });
+
+  it("stores null body when body is not provided (fetch failure)", async () => {
+    await repo.saveArticle({
+      ...base,
+      url: "https://example.com/no-body",
+      title: "t",
+      categoryId,
+      body: null,
+    });
+    const row = await db
+      .prepare("SELECT body FROM articles WHERE url = ?")
+      .bind("https://example.com/no-body")
+      .first<{ body: string | null }>();
+    expect(row).toEqual({ body: null });
   });
 
   it("does not duplicate an article with the same url", async () => {

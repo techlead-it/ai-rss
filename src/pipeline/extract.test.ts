@@ -93,26 +93,35 @@ describe("extractArticleText", () => {
 });
 
 describe("resolveArticleBody", () => {
-  it("uses extracted body text on a successful fetch", async () => {
+  it("returns extracted body and the same full text as bodyForStorage on success", async () => {
     const result = await resolveArticleBody(
       item(),
       http({ "https://example.com/post": { ok: true, status: 200, text: ARTICLE_HTML } }),
     );
     expect(result.fetchFailed).toBe(false);
     expect(result.body).toContain("これは記事の本文です。");
+    expect(result.bodyForStorage).toBe(result.body);
   });
 
-  it("falls back to the RSS excerpt with a flag on a non-ok response", async () => {
+  it("falls back to RSS excerpt with bodyForStorage=null on a non-ok response", async () => {
     const result = await resolveArticleBody(
       item(),
       http({ "https://example.com/post": { ok: false, status: 403, text: "" } }),
     );
-    expect(result).toEqual({ body: "RSSの抜粋テキスト", fetchFailed: true });
+    expect(result).toEqual({
+      body: "RSSの抜粋テキスト",
+      bodyForStorage: null,
+      fetchFailed: true,
+    });
   });
 
-  it("falls back to the RSS excerpt with a flag on a network error", async () => {
+  it("falls back to RSS excerpt with bodyForStorage=null on a network error", async () => {
     const result = await resolveArticleBody(item(), http({}));
-    expect(result).toEqual({ body: "RSSの抜粋テキスト", fetchFailed: true });
+    expect(result).toEqual({
+      body: "RSSの抜粋テキスト",
+      bodyForStorage: null,
+      fetchFailed: true,
+    });
   });
 
   it("falls back when the fetched body is too thin", async () => {
@@ -120,6 +129,23 @@ describe("resolveArticleBody", () => {
       item(),
       http({ "https://example.com/post": { ok: true, status: 200, text: "<html><body><p>短い</p></body></html>" } }),
     );
-    expect(result).toEqual({ body: "RSSの抜粋テキスト", fetchFailed: true });
+    expect(result).toEqual({
+      body: "RSSの抜粋テキスト",
+      bodyForStorage: null,
+      fetchFailed: true,
+    });
+  });
+
+  it("returns the full extracted text without capping at MAX_AI_BODY", async () => {
+    // 6000字を超える本文を用意（MAX_AI_BODY=6000 を超過）
+    const longPara = "これは長い記事の本文です。".repeat(800); // ≈ 11200字
+    const longHtml = `<article><p>${longPara}</p></article>`;
+    const result = await resolveArticleBody(
+      item(),
+      http({ "https://example.com/post": { ok: true, status: 200, text: longHtml } }),
+    );
+    expect(result.fetchFailed).toBe(false);
+    expect(result.bodyForStorage).not.toBeNull();
+    expect((result.bodyForStorage as string).length).toBeGreaterThan(6000);
   });
 });

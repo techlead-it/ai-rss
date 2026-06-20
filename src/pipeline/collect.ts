@@ -6,7 +6,7 @@ import type { ArticleAnalysis, FeedItem } from "./types";
 import { collectFeedItems } from "./feeds/fetch";
 import { dedupKey } from "./dedup";
 import { isLikelyAiSecurity } from "./relevance";
-import { resolveArticleBody } from "./extract";
+import { resolveArticleBody, MAX_AI_BODY } from "./extract";
 import { normalizeLabel } from "./labels";
 import { NeuronLimitError } from "../ai/errors";
 
@@ -171,10 +171,15 @@ export async function runCollection(
 
   for (const item of picked) {
     try {
-      const { body, fetchFailed } = await resolveArticleBody(item, deps.http);
+      const { body, bodyForStorage, fetchFailed } = await resolveArticleBody(
+        item,
+        deps.http,
+      );
       if (fetchFailed) summary.fetchFailed++;
 
       const existingLabels = Array.from(labelNamesSet);
+      const aiBody =
+        body.length > MAX_AI_BODY ? body.slice(0, MAX_AI_BODY) : body;
 
       let analysis: ArticleAnalysis;
       try {
@@ -182,7 +187,7 @@ export async function runCollection(
           deps.ai,
           {
             title: item.title,
-            body,
+            body: aiBody,
             source: item.source,
             existingLabels,
             fetchFailed,
@@ -228,6 +233,7 @@ export async function runCollection(
         publishedAt: item.publishedAt,
         fetchFailed,
         labelIds,
+        body: bodyForStorage,
       });
       summary.saved++;
       summary.savedBySource[item.source] =

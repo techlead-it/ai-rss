@@ -3,7 +3,7 @@ import type { HttpClient } from "./http";
 import { htmlToText } from "./text";
 
 // AI 入力と CPU を抑えるための本文長の上限・最小しきい値
-const MAX_BODY = 6000;
+export const MAX_AI_BODY = 6000;
 const MIN_BODY = 200;
 
 function stripChrome(html: string): string {
@@ -47,22 +47,24 @@ function mainRegion(html: string): string {
   return html;
 }
 
-/** HTML から記事本文のプレーンテキストを抽出する（軽量・上限付き）。 */
+/** HTML から記事本文のプレーンテキスト全文を抽出する。長さキャップは呼び出し側で適用する。 */
 export function extractArticleText(html: string): string {
-  const text = htmlToText(stripChrome(mainRegion(html)));
-  return text.length > MAX_BODY ? text.slice(0, MAX_BODY) : text;
+  return htmlToText(stripChrome(mainRegion(html)));
 }
 
 export interface ResolvedBody {
-  /** 要約に渡す本文（取得成功時は抽出本文、失敗時は RSS 抜粋） */
+  /** AI に渡す本文（取得成功時は抽出本文、失敗時は RSS 抜粋）。呼び出し側で `MAX_AI_BODY` に切り詰める */
   body: string;
+  /** DB 保存用の抽出本文全文。取得失敗・本文薄い時は null */
+  bodyForStorage: string | null;
   /** 本文取得に失敗し RSS 抜粋で代替したか */
   fetchFailed: boolean;
 }
 
 /**
  * 記事本文を取得・抽出する。取得失敗・到達不可・本文が薄い場合は
- * RSS 抜粋で代替し `fetchFailed=true` を立てる。
+ * RSS 抜粋で代替し `fetchFailed=true` を立てる。成功時のみ
+ * `bodyForStorage` に抽出本文全文を返す。
  */
 export async function resolveArticleBody(
   item: FeedItem,
@@ -72,10 +74,12 @@ export async function resolveArticleBody(
     const res = await http.fetch(item.url);
     if (res.ok) {
       const body = extractArticleText(res.text);
-      if (body.length >= MIN_BODY) return { body, fetchFailed: false };
+      if (body.length >= MIN_BODY) {
+        return { body, bodyForStorage: body, fetchFailed: false };
+      }
     }
   } catch {
     // ネットワークエラーはフォールバックへ
   }
-  return { body: item.excerpt, fetchFailed: true };
+  return { body: item.excerpt, bodyForStorage: null, fetchFailed: true };
 }

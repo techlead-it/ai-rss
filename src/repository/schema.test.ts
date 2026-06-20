@@ -25,6 +25,16 @@ describe("D1 schema and seed", () => {
     expect(results).toHaveLength(8);
   });
 
+  it("has a body column on articles for storing the extracted article text", async () => {
+    const db = createTestD1();
+    const { results } = await db
+      .prepare(
+        "SELECT name FROM pragma_table_info('articles') WHERE name = 'body'",
+      )
+      .all<{ name: string }>();
+    expect(results).toEqual([{ name: "body" }]);
+  });
+
   it("supports Japanese substring full-text search via the FTS5 trigram index", async () => {
     const db = createTestD1();
     await db
