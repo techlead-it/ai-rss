@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">AI Security News</title>
+  <rect width="64" height="64" rx="14" fill="#1c1a15"/>
+  <path
+    d="M32 9.5 48 16v11.5c0 12.2-6.2 20.8-16 26.5-9.8-5.7-16-14.3-16-26.5V16l16-6.5Z"
+    fill="#f6f4ee"
+    stroke="#4338ca"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M26 28.5h12M26 28.5l6 11M38 28.5l-6 11"
+    fill="none"
+    stroke="#4338ca"
+    stroke-width="3.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="26" cy="28.5" r="4.2" fill="#4338ca"/>
+  <circle cx="38" cy="28.5" r="4.2" fill="#4338ca"/>
+  <circle cx="32" cy="39.5" r="4.2" fill="#4338ca"/>
+  <circle cx="47" cy="17" r="5.4" fill="#b14328"/>
+  <path d="M47 13.8v4.4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="47" cy="20.8" r="1" fill="#fff"/>
+</svg>
