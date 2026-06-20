@@ -31,6 +31,17 @@ describe("buildAnalysisPrompt", () => {
     expect(system).toContain("labels");
   });
 
+  it("instructs detail to be a long-form Markdown summary with structured sections", () => {
+    const { system } = buildAnalysisPrompt(input);
+    expect(system).toContain("Markdown");
+    expect(system).toContain("見出し");
+    expect(system).toContain("表");
+    expect(system).toContain("## 概要");
+    expect(system).toContain("## 要点");
+    expect(system).toContain("## 影響範囲");
+    expect(system).toContain("## 対策");
+  });
+
   it("adds a notice for fetchFailed=true to soften relevance judgement", () => {
     const { user } = buildAnalysisPrompt({ ...input, fetchFailed: true });
     expect(user).toContain("本文取得に失敗");

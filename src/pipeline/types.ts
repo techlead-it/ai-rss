@@ -19,9 +19,9 @@ export interface FeedItem {
 export interface ArticleAnalysis {
   /** AI セキュリティ記事として妥当か（二次関連性判定） */
   relevant: boolean;
-  /** 日本語の短い要約 */
+  /** 日本語の短い要約（カード表示用、2〜3文） */
   summary: string;
-  /** 日本語の要点（箇条書き想定） */
+  /** 日本語の Markdown 形式による詳細要約（詳細ページ表示用、見出し・表・コード可） */
   detail: string;
   /** 付与するラベル名（既存ラベルに寄せた表記） */
   labels: string[];

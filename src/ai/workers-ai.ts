@@ -7,13 +7,13 @@ import { NeuronLimitError, isNeuronLimitError } from "./errors";
 // 採用モデル（docs/MODELS.md 参照）。要約・分類とも単一モデルで実行する。
 export const SUMMARY_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-// guided JSON。これで valid JSON 出力を強制し、detail を箇条書き配列で受け取る。
+// guided JSON。これで valid JSON 出力を強制し、detail を Markdown 文字列として受け取る。
 const ANALYSIS_SCHEMA = {
   type: "object",
   properties: {
     relevant: { type: "boolean" },
     summary: { type: "string" },
-    detail: { type: "array", items: { type: "string" } },
+    detail: { type: "string" },
     labels: { type: "array", items: { type: "string" } },
     originalLang: { type: "string" },
   },
@@ -57,23 +57,13 @@ function toResultObject(raw: unknown): Record<string, unknown> {
   throw new Error("AI response had no parseable content");
 }
 
-function toDetail(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value
-      .filter((v): v is string => typeof v === "string")
-      .map((line) => (line.startsWith("- ") ? line : `- ${line}`))
-      .join("\n");
-  }
-  return typeof value === "string" ? value : "";
-}
-
 /** Workers AI の応答から ArticleAnalysis を取り出す。 */
 export function parseAnalysis(raw: unknown): ArticleAnalysis {
   const obj = toResultObject(raw);
   return {
     relevant: obj.relevant === true,
     summary: typeof obj.summary === "string" ? obj.summary : "",
-    detail: toDetail(obj.detail),
+    detail: typeof obj.detail === "string" ? obj.detail : "",
     labels: Array.isArray(obj.labels)
       ? obj.labels.filter((l): l is string => typeof l === "string")
       : [],

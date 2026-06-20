@@ -66,16 +66,6 @@ export function ArticlePage() {
           )}
 
           <section className="mt-6">
-            <h2 className="text-sm font-semibold text-muted">要約</h2>
-            <div className="prose prose-sm mt-1 max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {state.data.summary}
-              </ReactMarkdown>
-            </div>
-          </section>
-
-          <section className="mt-6">
-            <h2 className="text-sm font-semibold text-muted">要点</h2>
             <div className="prose prose-sm mt-1 max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {state.data.detail}

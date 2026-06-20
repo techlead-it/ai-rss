@@ -13,8 +13,9 @@ const article: ArticleDto = {
   url: "https://example.com/post",
   category: { name: "セキュリティ", slug: "security" },
   labels: [{ name: "プロンプトインジェクション", slug: "prompt-injection" }],
-  summary: "ガードレールを回避する新手法の要約。",
-  detail: "- 要点1\n- 要点2",
+  summary: "カード用の短い要約テキスト。",
+  detail:
+    "## 概要\n本文の段落。\n\n## 要点\n- 要点1\n- 要点2\n",
   publishedAt: "2026-06-17T09:00:00Z",
   fetchFailed: false,
 };
@@ -43,11 +44,24 @@ function renderArticle(api: ApiClient) {
 }
 
 describe("ArticlePage", () => {
-  it("renders the detail bullet list as markdown list items", async () => {
+  it("renders the detail as a long-form markdown summary with headings", async () => {
     renderArticle(fakeApi());
-    await screen.findByText("要点1");
+    const heading = await screen.findByRole("heading", {
+      level: 2,
+      name: "概要",
+    });
+    expect(heading).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "要点" }),
+    ).toBeInTheDocument();
     const items = screen.getAllByRole("listitem");
     expect(items.map((li) => li.textContent)).toEqual(["要点1", "要点2"]);
+  });
+
+  it("does not render the short summary in the detail page", async () => {
+    renderArticle(fakeApi());
+    await screen.findByRole("heading", { level: 2, name: "概要" });
+    expect(screen.queryByText("カード用の短い要約テキスト。")).toBeNull();
   });
 
   it("links to the original article in a new tab", async () => {

@@ -10,12 +10,12 @@ describe("parseAnalysis", () => {
   it("parses a fenced JSON response", () => {
     const raw = {
       response:
-        '```json\n{"relevant":true,"summary":"要約","detail":"- 要点","labels":["プロンプトインジェクション"],"originalLang":"en"}\n```',
+        '```json\n{"relevant":true,"summary":"要約","detail":"## 概要\\n本文","labels":["プロンプトインジェクション"],"originalLang":"en"}\n```',
     };
     expect(parseAnalysis(raw)).toEqual({
       relevant: true,
       summary: "要約",
-      detail: "- 要点",
+      detail: "## 概要\n本文",
       labels: ["プロンプトインジェクション"],
       originalLang: "en",
     });
@@ -31,19 +31,20 @@ describe("parseAnalysis", () => {
     expect(result.labels).toEqual([]);
   });
 
-  it("parses a guided-JSON response where response is already an object", () => {
+  it("parses a guided-JSON response where detail is a Markdown string", () => {
+    const detail = "## 概要\n本文の段落\n\n## 影響範囲\n| 対象 | 影響 |\n| --- | --- |\n| A | 影響あり |";
     const raw = {
       response: {
         relevant: true,
         summary: "要約G",
-        detail: ["要点1", "要点2"],
+        detail,
         labels: ["プロンプトインジェクション"],
         originalLang: "en",
       },
     };
     const result = parseAnalysis(raw);
     expect(result.summary).toBe("要約G");
-    expect(result.detail).toBe("- 要点1\n- 要点2");
+    expect(result.detail).toBe(detail);
     expect(result.labels).toEqual(["プロンプトインジェクション"]);
   });
 
