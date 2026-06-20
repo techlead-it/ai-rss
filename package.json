@@ -6,7 +6,8 @@
   "scripts": {
     "deploy": "vp build && wrangler deploy",
     "deploy:dry-run": "vp build && wrangler deploy --dry-run",
-    "cf:preview": "vp build && wrangler dev"
+    "preview": "vp build && wrangler dev",
+    "preview:remote": "vp build && wrangler dev --remote"
   },
   "dependencies": {
     "fast-xml-parser": "^5.9.0",
