@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useApi } from "../api/context";
 import { useAsync } from "../hooks/useAsync";
@@ -7,14 +7,20 @@ import { ArticleCard } from "../components/ArticleCard";
 import { SearchBox } from "../components/SearchBox";
 
 const PER_PAGE = 10;
+const VISIBLE_LABEL_COUNT = 8;
 
 export function HomePage() {
   const api = useApi();
   const [params, setParams] = useSearchParams();
   const label = params.get("label") ?? undefined;
   const q = params.get("q") ?? undefined;
+  const tagsOpen = params.get("tags") === "open";
 
-  function setFilter(next: { label?: string | null; q?: string | null }) {
+  function setFilter(next: {
+    label?: string | null;
+    q?: string | null;
+    tags?: string | null;
+  }) {
     const sp = new URLSearchParams(params);
     for (const [key, value] of Object.entries(next)) {
       if (value == null || value === "") sp.delete(key);
@@ -25,6 +31,20 @@ export function HomePage() {
 
   const labels = useAsync(() => api.listLabels("security"), []);
   const articles = useInfiniteArticles(api, { label, q, perPage: PER_PAGE });
+
+  const sortedLabels = useMemo(() => {
+    if (labels.status !== "ready") return [];
+    return [...labels.data].sort((a, b) => b.count - a.count);
+  }, [labels]);
+  const visibleLabels = tagsOpen
+    ? sortedLabels
+    : sortedLabels.slice(0, VISIBLE_LABEL_COUNT);
+  const hasHiddenLabels = sortedLabels.length > VISIBLE_LABEL_COUNT;
+  const selectedLabel = label
+    ? sortedLabels.find((l) => l.slug === label)
+    : undefined;
+  const selectedIsHidden =
+    !!selectedLabel && !visibleLabels.some((l) => l.slug === selectedLabel.slug);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const hasMore = articles.status === "ready" && articles.hasMore;
@@ -72,7 +92,7 @@ export function HomePage() {
         </div>
       </header>
 
-      {labels.status === "ready" && labels.data.length > 0 && (
+      {labels.status === "ready" && sortedLabels.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-1.5">
           <button
             type="button"
@@ -83,7 +103,17 @@ export function HomePage() {
           >
             すべて
           </button>
-          {labels.data.map((l) => (
+          {selectedIsHidden && selectedLabel && (
+            <button
+              type="button"
+              onClick={() => setFilter({ label: null })}
+              aria-label={`選択中のフィルタ ${selectedLabel.name} を解除`}
+              className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-surface"
+            >
+              選択中: {selectedLabel.name} ({selectedLabel.count}) ×
+            </button>
+          )}
+          {visibleLabels.map((l) => (
             <button
               key={l.slug}
               type="button"
@@ -97,6 +127,19 @@ export function HomePage() {
               {l.name} ({l.count})
             </button>
           ))}
+          {hasHiddenLabels && (
+            <button
+              type="button"
+              onClick={() =>
+                setFilter({ tags: tagsOpen ? null : "open" })
+              }
+              className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs text-accent"
+            >
+              {tagsOpen
+                ? "閉じる"
+                : `+ もっと見る (残り ${sortedLabels.length - VISIBLE_LABEL_COUNT} 件)`}
+            </button>
+          )}
         </div>
       )}
 

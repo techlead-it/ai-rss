@@ -36,14 +36,22 @@ function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
   };
 }
 
-function renderHome(api: ApiClient) {
+function renderHome(api: ApiClient, initialEntries: string[] = ["/home"]) {
   return render(
     <ApiProvider client={api}>
-      <MemoryRouter initialEntries={["/home"]}>
+      <MemoryRouter initialEntries={initialEntries}>
         <HomePage />
       </MemoryRouter>
     </ApiProvider>,
   );
+}
+
+function tenLabels() {
+  return Array.from({ length: 10 }, (_, i) => ({
+    name: `Label${i + 1}`,
+    slug: `label${i + 1}`,
+    count: i + 1,
+  }));
 }
 
 describe("HomePage", () => {
@@ -215,6 +223,92 @@ describe("HomePage", () => {
     expect(await screen.findByText("記事11")).toBeInTheDocument();
     expect(screen.getByText("記事15")).toBeInTheDocument();
     expect(calls.filter((c) => c.page === 2)).toHaveLength(2);
+  });
+
+  it("shows only top 8 labels by count when more than 8 exist", async () => {
+    const api = fakeApi({ listLabels: async () => tenLabels() });
+    renderHome(api);
+
+    await screen.findByRole("button", { name: "Label10 (10)" });
+    for (const count of [10, 9, 8, 7, 6, 5, 4, 3]) {
+      expect(
+        screen.getByRole("button", { name: `Label${count} (${count})` }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.queryByRole("button", { name: "Label2 (2)" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Label1 (1)" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /もっと見る/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("expands all labels when もっと見る is clicked", async () => {
+    const api = fakeApi({ listLabels: async () => tenLabels() });
+    renderHome(api);
+
+    const expand = await screen.findByRole("button", { name: /もっと見る/ });
+    await userEvent.click(expand);
+
+    expect(
+      await screen.findByRole("button", { name: "Label2 (2)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Label1 (1)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "閉じる" })).toBeInTheDocument();
+  });
+
+  it("collapses labels when 閉じる is clicked", async () => {
+    const api = fakeApi({ listLabels: async () => tenLabels() });
+    renderHome(api, ["/home?tags=open"]);
+
+    const collapse = await screen.findByRole("button", { name: "閉じる" });
+    expect(
+      screen.getByRole("button", { name: "Label1 (1)" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(collapse);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Label1 (1)" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: /もっと見る/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the selected label as a removable chip when it is not in the top 8", async () => {
+    const api = fakeApi({ listLabels: async () => tenLabels() });
+    renderHome(api, ["/home?label=label1"]);
+
+    const chip = await screen.findByRole("button", {
+      name: /選択中.*Label1/,
+    });
+    expect(chip).toBeInTheDocument();
+
+    await userEvent.click(chip);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /選択中.*Label1/ }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("does not show the selected chip when the selected label is already in the top 8", async () => {
+    const api = fakeApi({ listLabels: async () => tenLabels() });
+    renderHome(api, ["/home?label=label10"]);
+
+    await screen.findByRole("button", { name: "Label10 (10)" });
+    expect(
+      screen.queryByRole("button", { name: /選択中/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not fetch more pages once everything is loaded", async () => {
