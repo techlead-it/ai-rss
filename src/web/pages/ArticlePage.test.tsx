@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
+import { SWRConfig } from "swr";
 import { ArticlePage } from "./ArticlePage";
 import { ApiProvider } from "../api/context";
 import type { ApiClient } from "../api/client";
@@ -33,13 +34,15 @@ function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
 
 function renderArticle(api: ApiClient) {
   return render(
-    <ApiProvider client={api}>
-      <MemoryRouter initialEntries={["/articles/7"]}>
-        <Routes>
-          <Route path="/articles/:id" element={<ArticlePage />} />
-        </Routes>
-      </MemoryRouter>
-    </ApiProvider>,
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <ApiProvider client={api}>
+        <MemoryRouter initialEntries={["/articles/7"]}>
+          <Routes>
+            <Route path="/articles/:id" element={<ArticlePage />} />
+          </Routes>
+        </MemoryRouter>
+      </ApiProvider>
+    </SWRConfig>,
   );
 }
 

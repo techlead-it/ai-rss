@@ -1,10 +1,12 @@
 import { Link } from "react-router";
+import useSWR from "swr";
 import { useApi } from "../api/context";
-import { useAsync } from "../hooks/useAsync";
 
 export function SourcesPage() {
   const api = useApi();
-  const sources = useAsync(() => api.listSources(), []);
+  const { data, error, isLoading } = useSWR(["sources"] as const, () =>
+    api.listSources(),
+  );
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 pb-16">
@@ -20,15 +22,13 @@ export function SourcesPage() {
         </p>
       </header>
 
-      {sources.status === "loading" && (
-        <p className="text-sm text-muted">読み込み中…</p>
-      )}
-      {sources.status === "error" && (
+      {isLoading && !data && <p className="text-sm text-muted">読み込み中…</p>}
+      {error && (
         <p className="text-sm text-warn">ソースの読み込みに失敗しました。</p>
       )}
-      {sources.status === "ready" && (
+      {data && (
         <ul className="flex flex-col gap-3">
-          {sources.data.map((s) => (
+          {data.map((s) => (
             <li
               key={s.source}
               className="rounded-[--radius-card] border border-line bg-surface p-4 shadow-sm"

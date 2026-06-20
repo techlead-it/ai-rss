@@ -1,15 +1,18 @@
 import { Link, useParams } from "react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import useSWR from "swr";
 import { useApi } from "../api/context";
-import { useAsync } from "../hooks/useAsync";
 import { formatDate } from "../lib/format";
 
 export function ArticlePage() {
   const api = useApi();
   const { id } = useParams();
   const articleId = Number(id);
-  const state = useAsync(() => api.getArticle(articleId), [articleId]);
+  const { data, error, isLoading } = useSWR(
+    ["article", articleId] as const,
+    ([, aid]) => api.getArticle(aid),
+  );
 
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 pb-16">
@@ -19,41 +22,37 @@ export function ArticlePage() {
         </Link>
       </header>
 
-      {state.status === "loading" && (
-        <p className="text-sm text-muted">読み込み中…</p>
-      )}
-      {state.status === "error" && (
+      {isLoading && !data && <p className="text-sm text-muted">読み込み中…</p>}
+      {error && (
         <p className="text-sm text-warn">記事の読み込みに失敗しました。</p>
       )}
-      {state.status === "ready" && state.data === null && (
+      {!isLoading && !error && data === null && (
         <p className="text-sm text-muted">記事が見つかりませんでした。</p>
       )}
-      {state.status === "ready" && state.data !== null && (
+      {data != null && (
         <article>
           <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-muted">
-            <span>{state.data.source}</span>
-            {state.data.publishedAt && (
+            <span>{data.source}</span>
+            {data.publishedAt && (
               <>
                 <span aria-hidden>·</span>
-                <time dateTime={state.data.publishedAt}>
-                  {formatDate(state.data.publishedAt)}
+                <time dateTime={data.publishedAt}>
+                  {formatDate(data.publishedAt)}
                 </time>
               </>
             )}
-            {state.data.fetchFailed && (
+            {data.fetchFailed && (
               <span className="rounded bg-warn-soft px-1.5 py-0.5 text-warn">
                 抜粋ベース
               </span>
             )}
           </div>
 
-          <h1 className="mt-2 text-2xl font-bold leading-snug">
-            {state.data.title}
-          </h1>
+          <h1 className="mt-2 text-2xl font-bold leading-snug">{data.title}</h1>
 
-          {state.data.labels.length > 0 && (
+          {data.labels.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {state.data.labels.map((label) => (
+              {data.labels.map((label) => (
                 <Link
                   key={label.slug}
                   to={`/home?label=${encodeURIComponent(label.slug)}`}
@@ -68,14 +67,14 @@ export function ArticlePage() {
           <section className="mt-6">
             <div className="prose prose-sm mt-1 max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {state.data.detail}
+                {data.detail}
               </ReactMarkdown>
             </div>
           </section>
 
           <div className="mt-8">
             <a
-              href={state.data.url}
+              href={data.url}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block rounded-md bg-accent px-4 py-2 text-sm text-surface"

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vite-plus/test";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
+import { SWRConfig } from "swr";
 import { HomePage } from "./HomePage";
 import { ApiProvider } from "../api/context";
 import type { ApiClient, ListParams } from "../api/client";
@@ -38,11 +39,13 @@ function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
 
 function renderHome(api: ApiClient, initialEntries: string[] = ["/home"]) {
   return render(
-    <ApiProvider client={api}>
-      <MemoryRouter initialEntries={initialEntries}>
-        <HomePage />
-      </MemoryRouter>
-    </ApiProvider>,
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <ApiProvider client={api}>
+        <MemoryRouter initialEntries={initialEntries}>
+          <HomePage />
+        </MemoryRouter>
+      </ApiProvider>
+    </SWRConfig>,
   );
 }
 

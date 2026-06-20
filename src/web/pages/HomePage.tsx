@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
+import useSWR from "swr";
 import { useApi } from "../api/context";
-import { useAsync } from "../hooks/useAsync";
 import { useInfiniteArticles } from "../hooks/useInfiniteArticles";
 import { ArticleCard } from "../components/ArticleCard";
 import { SearchBox } from "../components/SearchBox";
@@ -29,13 +29,15 @@ export function HomePage() {
     setParams(sp);
   }
 
-  const labels = useAsync(() => api.listLabels("security"), []);
+  const { data: labelsData } = useSWR(["labels", "security"] as const, ([, c]) =>
+    api.listLabels(c),
+  );
   const articles = useInfiniteArticles(api, { label, q, perPage: PER_PAGE });
 
   const sortedLabels = useMemo(() => {
-    if (labels.status !== "ready") return [];
-    return [...labels.data].sort((a, b) => b.count - a.count);
-  }, [labels]);
+    if (!labelsData) return [];
+    return [...labelsData].sort((a, b) => b.count - a.count);
+  }, [labelsData]);
   const visibleLabels = tagsOpen
     ? sortedLabels
     : sortedLabels.slice(0, VISIBLE_LABEL_COUNT);
@@ -92,7 +94,7 @@ export function HomePage() {
         </div>
       </header>
 
-      {labels.status === "ready" && sortedLabels.length > 0 && (
+      {labelsData && sortedLabels.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-1.5">
           <button
             type="button"

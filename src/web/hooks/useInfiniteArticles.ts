@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import useSWRInfinite from "swr/infinite";
 import type { ApiClient, ListParams } from "../api/client";
-import type { ArticleDto } from "../../pipeline/types";
+import type { ArticleDto, ArticleListResponse } from "../../pipeline/types";
 
 export type InfiniteArticlesState =
   | { status: "loading" }
@@ -17,125 +18,94 @@ export type InfiniteArticlesState =
 
 type FetchParams = Pick<ListParams, "label" | "q" | "perPage">;
 
-function isAbortError(err: unknown): boolean {
-  return err instanceof DOMException && err.name === "AbortError";
+type ArticlesKey = readonly ["articles", string, string, number, number];
+
+function asError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
 }
 
 /**
- * 無限スクロール用の記事ページング状態を扱うフック。
- * params (label/q) 変更時はページ1からやり直し、loadMore() で次ページを末尾に追記する。
+ * 無限スクロール用の記事ページング状態。useSWRInfinite を薄くラップする。
+ * params (label/q/perPage) が変わると key が変わり SWR の cache が独立し、
+ * 同じ params で再マウントされた場合は cache から即時復元され loading を経由しない。
  */
-export function useInfiniteArticles(api: ApiClient, params: FetchParams): InfiniteArticlesState {
+export function useInfiniteArticles(
+  api: ApiClient,
+  params: FetchParams,
+): InfiniteArticlesState {
   const { label, q, perPage } = params;
-  const [items, setItems] = useState<ArticleDto[]>([]);
-  const [total, setTotal] = useState(0);
-  const [initialStatus, setInitialStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [initialError, setInitialError] = useState<Error | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState<Error | undefined>(undefined);
 
-  // params 変更で増える世代カウンタ。古い世代のレスポンスは破棄する。
-  const generationRef = useRef(0);
-  const pageRef = useRef(1);
-  const loadingRef = useRef(false);
-  // 現世代の AbortController。世代切り替え時に古い fetch を中断する。
-  const abortRef = useRef<AbortController | null>(null);
-  // loadMore の参照を安定させるため、長さ判定用の最新値を ref に映す。
-  const itemsLenRef = useRef(0);
-  const totalRef = useRef(0);
-  useEffect(() => {
-    itemsLenRef.current = items.length;
-    totalRef.current = total;
-  }, [items.length, total]);
+  const getKey = useCallback(
+    (
+      pageIndex: number,
+      previous: ArticleListResponse | null,
+    ): ArticlesKey | null => {
+      if (previous && previous.items.length === 0) return null;
+      if (previous && previous.items.length >= previous.total) return null;
+      return [
+        "articles",
+        label ?? "",
+        q ?? "",
+        perPage ?? 0,
+        pageIndex + 1,
+      ] as const;
+    },
+    [label, q, perPage],
+  );
 
-  useEffect(() => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const gen = ++generationRef.current;
-    pageRef.current = 1;
-    loadingRef.current = true;
-    setInitialStatus("loading");
-    setInitialError(null);
-    setLoadMoreError(undefined);
-    setIsLoadingMore(false);
-    setItems([]);
-    setTotal(0);
-
-    api
-      .listArticles({ label, q, page: 1, perPage }, controller.signal)
-      .then(
-        (res) => {
-          if (gen !== generationRef.current) return;
-          setItems(res.items);
-          setTotal(res.total);
-          setInitialStatus("ready");
-        },
-        (err: unknown) => {
-          if (gen !== generationRef.current) return;
-          if (controller.signal.aborted || isAbortError(err)) return;
-          setInitialError(err instanceof Error ? err : new Error(String(err)));
-          setInitialStatus("error");
-        },
-      )
-      .finally(() => {
-        if (gen === generationRef.current) loadingRef.current = false;
+  const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite<
+    ArticleListResponse,
+    Error,
+    (pageIndex: number, prev: ArticleListResponse | null) => ArticlesKey | null
+  >(
+    getKey,
+    (key) => {
+      const [, l, query, pp, page] = key;
+      return api.listArticles({
+        label: l || undefined,
+        q: query || undefined,
+        page,
+        perPage: pp || undefined,
       });
+    },
+    {
+      revalidateFirstPage: false,
+      revalidateOnFocus: true,
+      parallel: false,
+    },
+  );
 
-    return () => controller.abort();
-  }, [api, label, q, perPage]);
+  const pages = data ?? [];
+  const items = pages.flatMap((p) => p.items);
+  const total = pages.length > 0 ? pages[pages.length - 1].total : 0;
+  const hasMore = items.length > 0 && items.length < total;
+  // 期待ページ数まで揃っていない && 失敗していない = 追加ロード中
+  const isLoadingMore = size > pages.length && !error;
 
-  const hasMore = items.length < total;
+  // 連続 loadMore 呼び出しで setSize を多重起動しないためのガード。
+  // pending=true の間は次の loadMore を無視し、新しいページが届いたら解除する。
+  const pendingRef = useRef(false);
+  useEffect(() => {
+    if (size <= pages.length || error) pendingRef.current = false;
+  }, [size, pages.length, error]);
 
-  // params が変わらない限り参照を安定させる。長さ判定は ref 経由で最新値を見る。
   const loadMore = useCallback(() => {
-    if (loadingRef.current) return;
-    if (itemsLenRef.current >= totalRef.current) return;
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    if (error) {
+      // 失敗ページの再試行。size は既に次ページ分まで進んでいるので、
+      // mutate で再 revalidate するだけで失敗ページが再 fetch される。
+      void mutate();
+      return;
+    }
+    void setSize((prev) => prev + 1);
+  }, [setSize, mutate, error]);
 
-    const gen = generationRef.current;
-    const controller = abortRef.current;
-    const nextPage = pageRef.current + 1;
-    pageRef.current = nextPage;
-    loadingRef.current = true;
-    setIsLoadingMore(true);
-    setLoadMoreError(undefined);
-
-    api
-      .listArticles({ label, q, page: nextPage, perPage }, controller?.signal)
-      .then(
-        (res) => {
-          if (gen !== generationRef.current) return;
-          setItems((prev) => [...prev, ...res.items]);
-          setTotal(res.total);
-        },
-        (err: unknown) => {
-          if (gen !== generationRef.current) return;
-          if (controller?.signal.aborted || isAbortError(err)) {
-            // abort された分は静かに巻き戻して再試行可能にする
-            pageRef.current = nextPage - 1;
-            return;
-          }
-          // 失敗したページは次回再試行できるよう pageRef を巻き戻す
-          pageRef.current = nextPage - 1;
-          setLoadMoreError(err instanceof Error ? err : new Error(String(err)));
-        },
-      )
-      .finally(() => {
-        if (gen === generationRef.current) {
-          loadingRef.current = false;
-          setIsLoadingMore(false);
-        }
-      });
-  }, [api, label, q, perPage]);
-
-  if (initialStatus === "loading") return { status: "loading" };
-  if (initialStatus === "error") {
-    return {
-      status: "error",
-      error: initialError ?? new Error("unknown error"),
-    };
+  if (isLoading && pages.length === 0) return { status: "loading" };
+  if (error && pages.length === 0) {
+    return { status: "error", error: asError(error) };
   }
+
   return {
     status: "ready",
     items,
@@ -143,6 +113,6 @@ export function useInfiniteArticles(api: ApiClient, params: FetchParams): Infini
     hasMore,
     isLoadingMore,
     loadMore,
-    loadMoreError,
+    loadMoreError: pages.length > 0 && error ? asError(error) : undefined,
   };
 }
