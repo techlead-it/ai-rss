@@ -5,6 +5,7 @@ import { SWRConfig } from "swr";
 import { SourcesPage } from "./SourcesPage";
 import { ApiProvider } from "../api/context";
 import type { ApiClient } from "../api/client";
+import { createFakeApiClient } from "../api/test-fakes";
 import type { SourceDto } from "../../pipeline/types";
 
 const sources: SourceDto[] = [
@@ -25,14 +26,10 @@ const sources: SourceDto[] = [
 ];
 
 function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
-  return {
-    listArticles: async () => ({ items: [], page: 1, perPage: 50, total: 0 }),
-    getArticle: async () => null,
-    listLabels: async () => [],
-    listCategories: async () => [],
+  return createFakeApiClient({
     listSources: async () => sources,
     ...overrides,
-  };
+  });
 }
 
 function renderSources(api: ApiClient) {

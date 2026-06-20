@@ -6,6 +6,7 @@ import { SWRConfig } from "swr";
 import { HomePage } from "./HomePage";
 import { ApiProvider } from "../api/context";
 import type { ApiClient, ListParams } from "../api/client";
+import { createFakeApiClient } from "../api/test-fakes";
 import type { ArticleDto, ArticleListResponse } from "../../pipeline/types";
 import { triggerIntersect } from "../../test/setup";
 
@@ -25,16 +26,13 @@ function article(id: number, title: string, labelSlug?: string): ArticleDto {
 }
 
 function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
-  return {
-    listArticles: async () => ({ items: [], page: 1, perPage: 10, total: 0 }),
-    getArticle: async () => null,
+  return createFakeApiClient({
     listLabels: async () => [
       { name: "プロンプトインジェクション", slug: "prompt-injection", count: 1 },
     ],
     listCategories: async () => [{ name: "セキュリティ", slug: "security" }],
-    listSources: async () => [],
     ...overrides,
-  };
+  });
 }
 
 function renderHome(api: ApiClient, initialEntries: string[] = ["/home"]) {

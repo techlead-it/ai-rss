@@ -6,6 +6,6 @@ export interface Env {
   ASSETS: Fetcher;
   /** 記事・カテゴリ・ラベルを保持する D1 */
   DB: D1Database;
-  /** 要約・分類に使う Workers AI */
+  /** 要約・分類・記事チャットに使う Workers AI */
   AI: Ai;
 }

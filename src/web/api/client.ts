@@ -5,6 +5,10 @@ import type {
   SourceDto,
   TaxonomyRef,
 } from "../../pipeline/types";
+import type { ChatMessage } from "../../ai/chat";
+import { parseSseResponseChunks } from "../../ai/sse";
+
+export type { ChatMessage };
 
 export interface ListParams {
   category?: string;
@@ -24,6 +28,12 @@ export interface ApiClient {
   listLabels(category?: string): Promise<LabelWithCount[]>;
   listCategories(): Promise<TaxonomyRef[]>;
   listSources(): Promise<SourceDto[]>;
+  /** POST /api/articles/:id/chat に SSE で接続し、回答テキストを順次 yield する。 */
+  chatWithArticle(
+    id: number,
+    messages: ChatMessage[],
+    signal?: AbortSignal,
+  ): AsyncIterable<string>;
 }
 
 function queryString(
@@ -72,4 +82,24 @@ export const httpApiClient: ApiClient = {
   listSources() {
     return getJson<SourceDto[]>("/api/sources");
   },
+  chatWithArticle(id, messages, signal) {
+    return chatStream(id, messages, signal);
+  },
 };
+
+async function* chatStream(
+  id: number,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): AsyncIterable<string> {
+  const res = await fetch(`/api/articles/${id}/chat`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messages }),
+    signal,
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`chat failed (${res.status})`);
+  }
+  yield* parseSseResponseChunks(res.body);
+}

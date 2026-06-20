@@ -8,8 +8,10 @@ import { runCollection } from "../pipeline/collect";
 import { FEEDS } from "../pipeline/feeds/definitions";
 import { httpClient } from "../pipeline/http";
 import { createWorkersAiEngine } from "../ai/workers-ai";
+import { createWorkersAiChatEngine } from "../ai/chat";
 import { Repository } from "../repository/repository";
 import { routeApi } from "./api";
+import { handleChatRequest } from "./chat";
 import {
   buildArticleOgp,
   buildDefaultOgp,
@@ -26,6 +28,18 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const pathname = url.pathname;
+
+    const chatMatch = pathname.match(/^\/api\/articles\/(\d+)\/chat$/);
+    if (chatMatch && request.method === "POST") {
+      const id = Number.parseInt(chatMatch[1], 10);
+      const res = await handleChatRequest(
+        request as unknown as Request,
+        id,
+        new Repository(env.DB),
+        createWorkersAiChatEngine(env.AI),
+      );
+      return res as unknown as CfResponse;
+    }
 
     const apiResult = await routeApi(
       request.method,

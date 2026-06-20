@@ -153,6 +153,17 @@ export class Repository {
     return articleId;
   }
 
+  async getArticleForChat(
+    id: number,
+  ): Promise<{ title: string; body: string } | null> {
+    const row = await this.db
+      .prepare("SELECT title, body FROM articles WHERE id = ?")
+      .bind(id)
+      .first<{ title: string; body: string | null }>();
+    if (!row || row.body === null) return null;
+    return { title: row.title, body: row.body };
+  }
+
   async getArticle(id: number): Promise<ArticleDto | null> {
     const row = await this.db
       .prepare(`SELECT ${ARTICLE_COLUMNS} FROM articles WHERE id = ?`)

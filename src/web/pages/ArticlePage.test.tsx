@@ -5,6 +5,7 @@ import { SWRConfig } from "swr";
 import { ArticlePage } from "./ArticlePage";
 import { ApiProvider } from "../api/context";
 import type { ApiClient } from "../api/client";
+import { createFakeApiClient } from "../api/test-fakes";
 import type { ArticleDto } from "../../pipeline/types";
 
 const article: ArticleDto = {
@@ -22,14 +23,10 @@ const article: ArticleDto = {
 };
 
 function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
-  return {
-    listArticles: async () => ({ items: [], page: 1, perPage: 50, total: 0 }),
+  return createFakeApiClient({
     getArticle: async () => article,
-    listLabels: async () => [],
-    listCategories: async () => [],
-    listSources: async () => [],
     ...overrides,
-  };
+  });
 }
 
 function renderArticle(api: ApiClient) {

@@ -127,6 +127,36 @@ describe("Repository article persistence and dedup", () => {
     expect(row).toEqual({ body: null });
   });
 
+  it("returns article title and body for chat context when body exists", async () => {
+    const id = await repo.saveArticle({
+      ...base,
+      url: "https://example.com/chat",
+      title: "AI セキュリティの最新動向",
+      categoryId,
+      body: "本文の全文がここに入る",
+    });
+    const result = await repo.getArticleForChat(id);
+    expect(result).toEqual({
+      title: "AI セキュリティの最新動向",
+      body: "本文の全文がここに入る",
+    });
+  });
+
+  it("returns null from getArticleForChat when body is null", async () => {
+    const id = await repo.saveArticle({
+      ...base,
+      url: "https://example.com/chat-no-body",
+      title: "t",
+      categoryId,
+      body: null,
+    });
+    expect(await repo.getArticleForChat(id)).toBeNull();
+  });
+
+  it("returns null from getArticleForChat when article does not exist", async () => {
+    expect(await repo.getArticleForChat(99999)).toBeNull();
+  });
+
   it("does not duplicate an article with the same url", async () => {
     const input = { ...base, url: "https://example.com/a", title: "t", categoryId };
     await repo.saveArticle(input);

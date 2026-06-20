@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
 import type { ApiClient, ListParams } from "../api/client";
+import { createFakeApiClient } from "../api/test-fakes";
 import type { ArticleDto, ArticleListResponse } from "../../pipeline/types";
 import { useInfiniteArticles } from "./useInfiniteArticles";
 
@@ -30,7 +31,7 @@ function paginatedApi(
 } {
   const calls: ListParams[] = [];
   const all = Array.from({ length: total }, (_, i) => article(i + 1));
-  const api: ApiClient = {
+  const api = createFakeApiClient({
     listArticles: async (params) => {
       calls.push(params);
       const page = params.page ?? 1;
@@ -43,11 +44,7 @@ function paginatedApi(
         total,
       };
     },
-    getArticle: async () => null,
-    listLabels: async () => [],
-    listCategories: async () => [],
-    listSources: async () => [],
-  };
+  });
   return { api, calls };
 }
 
@@ -171,15 +168,11 @@ describe("useInfiniteArticles", () => {
   });
 
   it("exposes an error state when the initial fetch fails", async () => {
-    const api: ApiClient = {
+    const api = createFakeApiClient({
       listArticles: async () => {
         throw new Error("boom");
       },
-      getArticle: async () => null,
-      listLabels: async () => [],
-      listCategories: async () => [],
-      listSources: async () => [],
-    };
+    });
     const { result } = renderHook(() => useInfiniteArticles(api, {}), {
       wrapper: freshCacheWrapper(),
     });
@@ -191,7 +184,7 @@ describe("useInfiniteArticles", () => {
   it("keeps items and surfaces loadMoreError when a subsequent page fails", async () => {
     let callCount = 0;
     const all = [article(1), article(2), article(3), article(4)];
-    const api: ApiClient = {
+    const api = createFakeApiClient({
       listArticles: async (): Promise<ArticleListResponse> => {
         callCount++;
         if (callCount === 1) {
@@ -199,11 +192,7 @@ describe("useInfiniteArticles", () => {
         }
         throw new Error("page-2-failed");
       },
-      getArticle: async () => null,
-      listLabels: async () => [],
-      listCategories: async () => [],
-      listSources: async () => [],
-    };
+    });
 
     const { result } = renderHook(
       () => useInfiniteArticles(api, { perPage: 2 }),
