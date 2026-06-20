@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import useSWR from "swr";
 import { useApi } from "../api/context";
 import { formatDate } from "../lib/format";
+import { ChatLauncher } from "../components/ChatLauncher";
 
 export function ArticlePage() {
   const api = useApi();
@@ -84,6 +85,7 @@ export function ArticlePage() {
           </div>
         </article>
       )}
+      {data != null && <ChatLauncher articleId={data.id} />}
     </div>
   );
 }
