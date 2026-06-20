@@ -6,7 +6,7 @@
   "scripts": {
     "deploy": "vp build && wrangler deploy",
     "deploy:dry-run": "vp build && wrangler deploy --dry-run",
-    "preview": "vp build && wrangler dev",
+    "preview": "wrangler d1 migrations apply ai-security-news --local && vp build && wrangler dev",
     "preview:remote": "vp build && wrangler dev --remote"
   },
   "dependencies": {
