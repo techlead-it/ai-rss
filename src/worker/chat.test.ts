@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach } from "vite-plus/test";
 import { Repository } from "../repository/repository";
 import { createTestD1 } from "../repository/d1-fake";
 import { createFakeChatEngine } from "../ai/chat";
-import { handleChatRequest } from "./chat";
+import {
+  handleChatRequest,
+  CHAT_MAX_MESSAGES,
+  CHAT_MAX_CONTENT_LENGTH,
+} from "./chat";
 
 let repo: Repository;
 let articleId: number;
@@ -99,5 +103,37 @@ describe("handleChatRequest", () => {
       createFakeChatEngine([]),
     );
     expect(res.status).toBe(400);
+  });
+
+  it("returns 413 when messages exceeds CHAT_MAX_MESSAGES", async () => {
+    const tooMany = Array.from(
+      { length: CHAT_MAX_MESSAGES + 1 },
+      (_, i) =>
+        ({
+          role: i % 2 === 0 ? "user" : "assistant",
+          content: "x",
+        }) as const,
+    );
+    const res = await handleChatRequest(
+      makeRequest({ messages: tooMany }),
+      articleId,
+      repo,
+      createFakeChatEngine([]),
+    );
+    expect(res.status).toBe(413);
+  });
+
+  it("returns 413 when any message content exceeds CHAT_MAX_CONTENT_LENGTH", async () => {
+    const res = await handleChatRequest(
+      makeRequest({
+        messages: [
+          { role: "user", content: "a".repeat(CHAT_MAX_CONTENT_LENGTH + 1) },
+        ],
+      }),
+      articleId,
+      repo,
+      createFakeChatEngine([]),
+    );
+    expect(res.status).toBe(413);
   });
 });

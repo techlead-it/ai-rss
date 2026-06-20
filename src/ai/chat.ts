@@ -4,6 +4,9 @@ import { parseSseResponseChunks } from "./sse";
 /** 記事チャットに使う Workers AI モデル（解析用と共通）。 */
 export const CHAT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
+/** AI に投入する記事 body 長の上限。モデルの context window と Neuron 消費を抑える。 */
+export const CHAT_MAX_BODY = 6000;
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -31,13 +34,17 @@ const SYSTEM_INSTRUCTION =
   "記事に書かれていないことを尋ねられた場合は、推測せずに「記事には記載がありません」と伝えてください。";
 
 function buildSystemMessage(article: ChatArticle): string {
+  const body =
+    article.body.length > CHAT_MAX_BODY
+      ? article.body.slice(0, CHAT_MAX_BODY)
+      : article.body;
   return `${SYSTEM_INSTRUCTION}
 
 ---記事タイトル---
 ${article.title}
 
 ---記事本文---
-${article.body}`;
+${body}`;
 }
 
 export function createWorkersAiChatEngine(

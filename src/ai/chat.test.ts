@@ -4,6 +4,7 @@ import {
   createWorkersAiChatEngine,
   createFakeChatEngine,
   CHAT_MODEL,
+  CHAT_MAX_BODY,
 } from "./chat";
 
 function sseStream(chunks: string[]): ReadableStream<Uint8Array> {
@@ -106,6 +107,30 @@ describe("createWorkersAiChatEngine", () => {
       ]),
     );
     expect(chunks).toEqual(["1. 入力", "2", ". 出力"]);
+  });
+
+  it("caps the article body at CHAT_MAX_BODY when embedding it into the system message", async () => {
+    const calls: Array<{ inputs: unknown }> = [];
+    const ai = {
+      run: async (_model: string, inputs: unknown) => {
+        calls.push({ inputs });
+        return sseStream(["data: [DONE]\n\n"]);
+      },
+    } as unknown as Ai;
+
+    const longBody = "あ".repeat(CHAT_MAX_BODY + 1000);
+    const engine = createWorkersAiChatEngine(ai);
+    await collect(
+      engine.stream({ title: "T", body: longBody }, [
+        { role: "user", content: "q" },
+      ]),
+    );
+    const systemContent = (
+      calls[0].inputs as { messages: Array<{ content: string }> }
+    ).messages[0].content;
+    // 本文部分の長さは CHAT_MAX_BODY に切られていること
+    const bodyOnly = systemContent.split("---記事本文---\n")[1] ?? "";
+    expect(bodyOnly.length).toBe(CHAT_MAX_BODY);
   });
 
   it("ignores malformed SSE lines without breaking the stream", async () => {

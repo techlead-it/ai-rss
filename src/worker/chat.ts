@@ -1,6 +1,15 @@
 import type { Repository } from "../repository/repository";
 import type { ChatEngine, ChatMessage } from "../ai/chat";
 
+/** 1 リクエストの messages 件数の上限（user+assistant の合計）。Neuron 消費と context 長を抑える。 */
+export const CHAT_MAX_MESSAGES = 20;
+/** 1 メッセージあたりの content 文字数の上限。 */
+export const CHAT_MAX_CONTENT_LENGTH = 4000;
+
+type ValidationError =
+  | { kind: "bad_request" }
+  | { kind: "payload_too_large" };
+
 interface ChatRequestBody {
   messages: ChatMessage[];
 }
@@ -12,16 +21,26 @@ function jsonError(status: number, message: string): Response {
   });
 }
 
-function validateBody(payload: unknown): ChatRequestBody | null {
-  if (!payload || typeof payload !== "object") return null;
+function validateBody(
+  payload: unknown,
+): ChatRequestBody | ValidationError {
+  if (!payload || typeof payload !== "object") return { kind: "bad_request" };
   const { messages } = payload as { messages?: unknown };
-  if (!Array.isArray(messages) || messages.length === 0) return null;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { kind: "bad_request" };
+  }
+  if (messages.length > CHAT_MAX_MESSAGES) {
+    return { kind: "payload_too_large" };
+  }
   const valid: ChatMessage[] = [];
   for (const m of messages) {
-    if (!m || typeof m !== "object") return null;
+    if (!m || typeof m !== "object") return { kind: "bad_request" };
     const { role, content } = m as { role?: unknown; content?: unknown };
-    if (role !== "user" && role !== "assistant") return null;
-    if (typeof content !== "string") return null;
+    if (role !== "user" && role !== "assistant") return { kind: "bad_request" };
+    if (typeof content !== "string") return { kind: "bad_request" };
+    if (content.length > CHAT_MAX_CONTENT_LENGTH) {
+      return { kind: "payload_too_large" };
+    }
     valid.push({ role, content });
   }
   return { messages: valid };
@@ -44,8 +63,14 @@ export async function handleChatRequest(
   } catch {
     return jsonError(400, "invalid json body");
   }
-  const body = validateBody(payload);
-  if (!body) return jsonError(400, "messages required");
+  const result = validateBody(payload);
+  if ("kind" in result) {
+    if (result.kind === "payload_too_large") {
+      return jsonError(413, "payload too large");
+    }
+    return jsonError(400, "messages required");
+  }
+  const body = result;
 
   const article = await repo.getArticleForChat(articleId);
   if (!article) return jsonError(404, "article not found");
