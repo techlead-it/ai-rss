@@ -15,6 +15,11 @@ const CATEGORY_SLUG = "security";
 const DEFAULT_CAP = 30;
 const DEFAULT_MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
+// 記事処理の並列度。直列だと 30 件 × 数秒/件 で wall time が cron 上限に当たり
+// 「内部エラー」終了になっていたため、本文 fetch + AI 解析を同時実行する。
+// Workers AI のレート制限・サブリクエスト本数とのバランスで控えめに 6 本とする
+// （feeds/fetch.ts の MAX_CONCURRENT_FETCHES と一貫）。
+const DEFAULT_ANALYZE_CONCURRENCY = 6;
 
 export interface PipelineDeps {
   feeds: FeedDef[];
@@ -25,6 +30,8 @@ export interface PipelineDeps {
   cap?: number;
   /** AI 一時エラーのリトライ回数 */
   maxRetries?: number;
+  /** 記事処理の並列度（本文 fetch + AI 解析を同時に走らせる本数） */
+  analyzeConcurrency?: number;
   sleep?: (ms: number) => Promise<void>;
   logger?: (message: string) => void;
 }
@@ -108,6 +115,96 @@ async function analyzeWithRetry(
   }
 }
 
+interface ProcessContext {
+  http: HttpClient;
+  ai: AiEngine;
+  repo: Repository;
+  categoryId: number;
+  maxRetries: number;
+  sleep: (ms: number) => Promise<void>;
+  log: (message: string) => void;
+  labelNamesSet: Set<string>;
+}
+
+type ProcessOutcome =
+  | { kind: "saved"; source: string; fetchFailed: boolean }
+  | { kind: "excluded"; fetchFailed: boolean }
+  | { kind: "aiError"; fetchFailed: boolean }
+  | { kind: "neuronLimit"; fetchFailed: boolean };
+
+/** 1 記事ぶんの本文取得 → AI 解析 → 永続化を行い、集計用の結果を返す。例外は内部で吸収する。 */
+async function processItem(
+  item: FeedItem,
+  ctx: ProcessContext,
+): Promise<ProcessOutcome> {
+  let fetchFailed = false;
+  try {
+    const resolved = await resolveArticleBody(item, ctx.http);
+    fetchFailed = resolved.fetchFailed;
+
+    const existingLabels = Array.from(ctx.labelNamesSet);
+    const aiBody =
+      resolved.body.length > MAX_AI_BODY
+        ? resolved.body.slice(0, MAX_AI_BODY)
+        : resolved.body;
+
+    let analysis: ArticleAnalysis;
+    try {
+      analysis = await analyzeWithRetry(
+        ctx.ai,
+        {
+          title: item.title,
+          body: aiBody,
+          source: item.source,
+          existingLabels,
+          fetchFailed,
+        },
+        ctx.maxRetries,
+        ctx.sleep,
+      );
+    } catch (err) {
+      if (err instanceof NeuronLimitError) {
+        ctx.log("Neuron 日次上限に到達。処理済み分をコミットして終了します。");
+        return { kind: "neuronLimit", fetchFailed };
+      }
+      ctx.log(`AI 解析に失敗（スキップ）: ${item.url}`);
+      return { kind: "aiError", fetchFailed };
+    }
+
+    if (!analysis.relevant) return { kind: "excluded", fetchFailed };
+
+    const labelIds: number[] = [];
+    for (const raw of analysis.labels) {
+      const name = normalizeLabel(raw, existingLabels);
+      // 空ラベルやカテゴリ名そのもの（例: セキュリティ）はラベルにしない
+      if (name === "" || name === CATEGORY_NAME) continue;
+      labelIds.push(await ctx.repo.getOrCreateLabel(ctx.categoryId, name));
+      ctx.labelNamesSet.add(name);
+    }
+
+    await ctx.repo.saveArticle({
+      url: item.url,
+      guid: item.guid,
+      source: item.source,
+      title: item.title,
+      categoryId: ctx.categoryId,
+      summary: analysis.summary,
+      detail: analysis.detail,
+      originalLang: analysis.originalLang,
+      publishedAt: item.publishedAt,
+      fetchFailed,
+      labelIds,
+      body: resolved.bodyForStorage,
+    });
+    return { kind: "saved", source: item.source, fetchFailed };
+  } catch (err) {
+    // 記事単位の予期せぬ失敗は分離し、全体を止めない
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.log(`記事処理に失敗（スキップ）: ${item.url}: ${message}`);
+    return { kind: "aiError", fetchFailed };
+  }
+}
+
 /**
  * 収集パイプライン本体。取得→新着抽出→一次フィルタ→上限キャップ→本文取得→
  * 二次判定→要約→ラベル分類→永続化を実行する。全 I/O は注入されたフェイクで置換可能。
@@ -168,82 +265,44 @@ export async function runCollection(
   // ラベル一覧はループ前に1回取得し、ループ中に作成した新規ラベルはローカル Set
   // に追記する。1記事ごとに D1 へ再問い合わせするのを避けるため。
   const labelNamesSet = new Set(await deps.repo.listLabelNames(categoryId));
+  const concurrency = deps.analyzeConcurrency ?? DEFAULT_ANALYZE_CONCURRENCY;
+  const ctx: ProcessContext = {
+    http: deps.http,
+    ai: deps.ai,
+    repo: deps.repo,
+    categoryId,
+    maxRetries,
+    sleep,
+    log,
+    labelNamesSet,
+  };
 
-  for (const item of picked) {
-    try {
-      const { body, bodyForStorage, fetchFailed } = await resolveArticleBody(
-        item,
-        deps.http,
-      );
-      if (fetchFailed) summary.fetchFailed++;
-
-      const existingLabels = Array.from(labelNamesSet);
-      const aiBody =
-        body.length > MAX_AI_BODY ? body.slice(0, MAX_AI_BODY) : body;
-
-      let analysis: ArticleAnalysis;
-      try {
-        analysis = await analyzeWithRetry(
-          deps.ai,
-          {
-            title: item.title,
-            body: aiBody,
-            source: item.source,
-            existingLabels,
-            fetchFailed,
-          },
-          maxRetries,
-          sleep,
-        );
-      } catch (err) {
-        if (err instanceof NeuronLimitError) {
-          summary.neuronLimitReached = true;
-          log("Neuron 日次上限に到達。処理済み分をコミットして終了します。");
+  // 並列バッチ。1 バッチ内の全件が settled してから集計し、Neuron 上限を踏んでいたら
+  // 次バッチには進まない。並列内で同時に Neuron 上限を踏みうるが、既に進行中だった処理は
+  // 結果が活きるよう待ち切る（途中破棄しない）。
+  for (let i = 0; i < picked.length; i += concurrency) {
+    const batch = picked.slice(i, i + concurrency);
+    const results = await Promise.all(batch.map((item) => processItem(item, ctx)));
+    for (const r of results) {
+      if (r.fetchFailed) summary.fetchFailed++;
+      switch (r.kind) {
+        case "saved":
+          summary.saved++;
+          summary.savedBySource[r.source] =
+            (summary.savedBySource[r.source] ?? 0) + 1;
           break;
-        }
-        summary.aiErrors++;
-        log(`AI 解析に失敗（スキップ）: ${item.url}`);
-        continue;
+        case "excluded":
+          summary.excluded++;
+          break;
+        case "aiError":
+          summary.aiErrors++;
+          break;
+        case "neuronLimit":
+          summary.neuronLimitReached = true;
+          break;
       }
-
-      // 二次関連性判定で AI セキュリティ以外を除外
-      if (!analysis.relevant) {
-        summary.excluded++;
-        continue;
-      }
-
-      const labelIds: number[] = [];
-      for (const raw of analysis.labels) {
-        const name = normalizeLabel(raw, existingLabels);
-        // 空ラベルやカテゴリ名そのもの（例: セキュリティ）はラベルにしない
-        if (name === "" || name === CATEGORY_NAME) continue;
-        labelIds.push(await deps.repo.getOrCreateLabel(categoryId, name));
-        labelNamesSet.add(name);
-      }
-
-      await deps.repo.saveArticle({
-        url: item.url,
-        guid: item.guid,
-        source: item.source,
-        title: item.title,
-        categoryId,
-        summary: analysis.summary,
-        detail: analysis.detail,
-        originalLang: analysis.originalLang,
-        publishedAt: item.publishedAt,
-        fetchFailed,
-        labelIds,
-        body: bodyForStorage,
-      });
-      summary.saved++;
-      summary.savedBySource[item.source] =
-        (summary.savedBySource[item.source] ?? 0) + 1;
-    } catch (err) {
-      // 記事単位の予期せぬ失敗は分離し、全体を止めない
-      summary.aiErrors++;
-      const message = err instanceof Error ? err.message : String(err);
-      log(`記事処理に失敗（スキップ）: ${item.url}: ${message}`);
     }
+    if (summary.neuronLimitReached) break;
   }
 
   log(
